@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { PC, NPC } from '../types';
+import { useStore } from '../store';
 
 interface CharacterCardProps {
   // Персонаж для отображения (PC или NPC)
@@ -12,6 +14,35 @@ interface CharacterCardProps {
 }
 
 export function CharacterCard({ character, type, onEdit, onDelete }: CharacterCardProps) {
+  const { updatePc } = useStore();
+  const [hpInput, setHpInput] = useState<string>('');
+  const [isEditingHp, setIsEditingHp] = useState(false);
+
+  // Handle HP edit
+  const handleHpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setHpInput(e.target.value);
+  };
+
+  // Save HP changes
+  const handleHpSave = () => {
+    const newHp = parseInt(hpInput, 10);
+    if (!isNaN(newHp) && type === 'pc' && newHp >= 0) {
+      updatePc((character as PC).id, { hp: newHp });
+      setIsEditingHp(false);
+      setHpInput('');
+    }
+  };
+
+  // Handle Enter key in HP input
+  const handleHpKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleHpSave();
+    } else if (e.key === 'Escape') {
+      setIsEditingHp(false);
+      setHpInput('');
+    }
+  };
+
   // Функция для получения цвета бейджа по выравниванию
   const getAlignmentBadgeColor = (alignment?: string): string => {
     switch (alignment) {
@@ -88,7 +119,29 @@ export function CharacterCard({ character, type, onEdit, onDelete }: CharacterCa
               <p>👤 Игрок: <span className="text-slate-100">{(character as PC).playerName}</span></p>
             )}
             {(character as PC).maxHp && (
-              <p>❤️ HP: <span className="text-slate-100">{(character as PC).hp || 0}/<span>{(character as PC).maxHp}</span></span></p>
+              <div className="flex items-center gap-2">
+                <p>❤️ HP: <span className="text-slate-100">
+                  {isEditingHp ? (
+                    <input
+                      type="number"
+                      value={hpInput}
+                      onChange={handleHpChange}
+                      onBlur={handleHpSave}
+                      onKeyDown={handleHpKeyDown}
+                      autoFocus
+                      min="0"
+                      className="w-12 px-1 py-0 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-blue-400"
+                    />
+                  ) : (
+                    <span onClick={() => {
+                      setIsEditingHp(true);
+                      setHpInput(String((character as PC).hp || 0));
+                    }} className="cursor-pointer hover:text-blue-300">
+                      {(character as PC).hp || 0}
+                    </span>
+                  )}
+                </span>/<span>{(character as PC).maxHp}</span></p>
+              </div>
             )}
           </>
         )}

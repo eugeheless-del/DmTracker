@@ -4,20 +4,22 @@ import { Session } from '../types';
 import ReactMarkdown from 'react-markdown';
 
 function Sessions() {
-  const { sessions, addSession, updateSession, deleteSession } = useStore();
+  const { sessions, pcs, addSession, updateSession, deleteSession } = useStore();
   const [showForm, setShowForm] = useState(false);
   const [editingSession, setEditingSession] = useState<Session | undefined>();
   const [formData, setFormData] = useState({
     name: '',
     description: '',
+    date: '',
     notes: '',
+    selectedPcIds: [] as string[],
   });
   const [showPreview, setShowPreview] = useState(false);
 
   // Handle new session
   const handleNewSession = () => {
     setEditingSession(undefined);
-    setFormData({ name: '', description: '', notes: '' });
+    setFormData({ name: '', description: '', date: '', notes: '', selectedPcIds: [] });
     setShowForm(true);
   };
 
@@ -33,33 +35,40 @@ function Sessions() {
       updateSession(editingSession.id, {
         name: formData.name,
         description: formData.description,
+        date: formData.date ? new Date(formData.date).getTime() : undefined,
         notes: formData.notes,
         twistIds: editingSession.twistIds,
         npcIds: editingSession.npcIds,
-        pcIds: editingSession.pcIds,
+        pcIds: formData.selectedPcIds,
       });
     } else {
       addSession({
         name: formData.name,
         description: formData.description,
+        date: formData.date ? new Date(formData.date).getTime() : undefined,
         notes: formData.notes,
         twistIds: [],
         npcIds: [],
-        pcIds: [],
+        pcIds: formData.selectedPcIds,
       });
     }
     setShowForm(false);
     setEditingSession(undefined);
-    setFormData({ name: '', description: '', notes: '' });
+    setFormData({ name: '', description: '', date: '', notes: '', selectedPcIds: [] });
   };
 
   // Handle session edit
   const handleEditSession = (session: Session) => {
     setEditingSession(session);
+    const dateStr = session.date
+      ? new Date(session.date).toISOString().split('T')[0]
+      : '';
     setFormData({
       name: session.name,
       description: session.description || '',
+      date: dateStr,
       notes: session.notes || '',
+      selectedPcIds: session.pcIds || [],
     });
     setShowForm(true);
   };
@@ -71,15 +80,13 @@ function Sessions() {
     }
   };
 
-  // Format date for display
+  // Format date for display (date only, no time)
   const formatDate = (timestamp?: number) => {
     if (!timestamp) return 'Дата не указана';
     return new Date(timestamp).toLocaleDateString('ru-RU', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
     });
   };
 
@@ -141,6 +148,52 @@ function Sessions() {
                     placeholder="Короткое описание события сессии"
                   />
                 </div>
+
+                {/* Date */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">Дата сессии</label>
+                  <input
+                    type="date"
+                    value={formData.date}
+                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                {/* Player Characters Selection */}
+                {pcs.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium mb-3">Персонажи игроков</label>
+                    <div className="space-y-2 max-h-40 overflow-y-auto bg-slate-700/50 p-3 rounded-lg border border-slate-600">
+                      {pcs.map((pc) => (
+                        <label key={pc.id} className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={formData.selectedPcIds.includes(pc.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setFormData({
+                                  ...formData,
+                                  selectedPcIds: [...formData.selectedPcIds, pc.id],
+                                });
+                              } else {
+                                setFormData({
+                                  ...formData,
+                                  selectedPcIds: formData.selectedPcIds.filter(id => id !== pc.id),
+                                });
+                              }
+                            }}
+                            className="w-4 h-4 rounded accent-blue-500 cursor-pointer"
+                          />
+                          <span className="text-sm text-slate-100">{pc.name}</span>
+                          {pc.playerName && (
+                            <span className="text-xs text-slate-400">({pc.playerName})</span>
+                          )}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Log / Notes with Tabs */}
                 <div className="flex-1 flex flex-col min-h-0">
@@ -232,6 +285,16 @@ function Sessions() {
                     <p className="text-sm text-slate-300">{session.description}</p>
                   )}
                   <p className="text-xs text-slate-400">{formatDate(session.date)}</p>
+                  {session.pcIds && session.pcIds.length > 0 && (
+                    <div className="text-xs text-blue-300 mt-2">
+                      <span className="font-medium">🧙 Персонажи:</span>{' '}
+                      {session.pcIds
+                        .map((pcId) => pcs.find((pc) => pc.id === pcId))
+                        .filter(Boolean)
+                        .map((pc) => pc?.name)
+                        .join(', ')}
+                    </div>
+                  )}
                 </div>
 
                 {session.notes && (
