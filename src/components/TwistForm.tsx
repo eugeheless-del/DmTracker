@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Twist, PC, NPC } from '../types';
+import { Twist } from '../types';
 import { useStore } from '../store';
 
 interface TwistFormProps {

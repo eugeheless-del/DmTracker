@@ -5,6 +5,16 @@ export interface BaseEntity {
   createdAt: number;
   updatedAt: number;
 }
+
+// Search result type
+export interface SearchResult {
+  id: string;
+  name: string;
+  type: 'pc' | 'npc' | 'twist' | 'session';
+  description?: string;
+  matchedField?: 'name' | 'role' | 'class' | 'race' | 'type' | 'description';
+}
+
 // Тип для данных формы при создании/редактировании
 export type TwistInput = Omit<Twist, 'id' | 'createdAt' | 'updatedAt'>;
 export type PCInput = Omit<PC, 'id' | 'createdAt' | 'updatedAt'>;
@@ -89,4 +99,5 @@ export interface StoreState {
   // Utility
   loadFromStorage: () => void;
   clearAll: () => void;
+  searchEntities: (query: string) => SearchResult[];
 }

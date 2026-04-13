@@ -3,6 +3,8 @@ import Dashboard from '../pages/Dashboard'
 import Characters from '../pages/Characters'
 import Twists from '../pages/Twists'
 import Sessions from '../pages/Sessions'
+import { SearchBar } from './SearchBar'
+import { SearchResult } from '../types'
 
 type Screen = 'dashboard' | 'characters' | 'twists' | 'sessions'
 
@@ -21,6 +23,24 @@ function Layout() {
   const handleNavigateToCharacter = () => {
     setCurrentScreen('characters')
     setMobileMenuOpen(false)
+  }
+
+  // Handle search result selection - navigate to appropriate page
+  const handleSearchResult = (result: SearchResult) => {
+    switch (result.type) {
+      case 'pc':
+      case 'npc':
+        setCurrentScreen('characters')
+        break
+      case 'twist':
+        setCurrentScreen('twists')
+        break
+      case 'session':
+        setCurrentScreen('sessions')
+        break
+      default:
+        break
+    }
   }
 
   const renderScreen = () => {
@@ -47,17 +67,9 @@ function Layout() {
             <h1 className="text-2xl font-bold">🐉 DM Tracker</h1>
           </div>
 
-          {/* Search bar (placeholder) */}
+          {/* Search bar */}
           <div className="hidden md:flex flex-1 max-w-md">
-            <div className="relative w-full">
-              <input
-                type="text"
-                placeholder="Поиск..."
-                className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm focus:outline-none focus:border-slate-600"
-                disabled
-              />
-              <span className="absolute right-3 top-2.5 text-slate-500">🔍</span>
-            </div>
+            <SearchBar onResultSelect={handleSearchResult} />
           </div>
 
           {/* Mobile menu toggle */}

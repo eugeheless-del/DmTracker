@@ -70,8 +70,8 @@ function Dashboard() {
                     🧙{' '}
                     {session.pcIds
                       .map((pcId) => pcs.find((pc) => pc.id === pcId))
-                      .filter(Boolean)
-                      .map((pc) => `${pc?.name}${pc?.playerName ? ` (${pc.playerName})` : ''}`)
+                      .filter((pc): pc is typeof pcs[0] => Boolean(pc))
+                      .map((pc) => `${pc.name}${pc.playerName ? ` (${pc.playerName})` : ''}`)
                       .join(', ')}
                   </div>
                 </div>

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { StoreState, NPC, PC, Twist, Session } from './types';
+import { StoreState, NPC, PC, Twist, Session, SearchResult } from './types';
 import { TwistInput } from './types';
 
 const STORAGE_KEY = 'dm_tracker_store';
@@ -221,6 +221,108 @@ export const useStore = create<StoreState>((set, get) => {
       } catch (error) {
         console.warn('Failed to clear localStorage:', error);
       }
+    },
+
+    // Global search across all entities
+    searchEntities: (query: string): SearchResult[] => {
+      const state = get();
+      const normalizedQuery = query.toLowerCase().trim();
+
+      if (!normalizedQuery) return [];
+
+      const results: SearchResult[] = [];
+
+      // Search PCs
+      state.pcs.forEach((pc) => {
+        if (pc.name.toLowerCase().includes(normalizedQuery)) {
+          results.push({
+            id: pc.id,
+            name: pc.name,
+            type: 'pc',
+            description: `${pc.class || 'Character'}${pc.playerName ? ` (${pc.playerName})` : ''}`,
+            matchedField: 'name',
+          });
+        } else if (
+          pc.class?.toLowerCase().includes(normalizedQuery) ||
+          pc.race?.toLowerCase().includes(normalizedQuery) ||
+          pc.playerName?.toLowerCase().includes(normalizedQuery)
+        ) {
+          results.push({
+            id: pc.id,
+            name: pc.name,
+            type: 'pc',
+            description: `${pc.class || 'Character'}${pc.playerName ? ` (${pc.playerName})` : ''}`,
+            matchedField: 'role',
+          });
+        }
+      });
+
+      // Search NPCs
+      state.npcs.forEach((npc) => {
+        if (npc.name.toLowerCase().includes(normalizedQuery)) {
+          results.push({
+            id: npc.id,
+            name: npc.name,
+            type: 'npc',
+            description: npc.description || npc.location || 'NPC',
+            matchedField: 'name',
+          });
+        } else if (
+          npc.description?.toLowerCase().includes(normalizedQuery) ||
+          npc.location?.toLowerCase().includes(normalizedQuery) ||
+          npc.appearance?.toLowerCase().includes(normalizedQuery)
+        ) {
+          results.push({
+            id: npc.id,
+            name: npc.name,
+            type: 'npc',
+            description: npc.description || npc.location || 'NPC',
+            matchedField: 'role',
+          });
+        }
+      });
+
+      // Search Twists
+      state.twists.forEach((twist) => {
+        if (twist.name.toLowerCase().includes(normalizedQuery)) {
+          results.push({
+            id: twist.id,
+            name: twist.name,
+            type: 'twist',
+            description: twist.type || twist.description,
+            matchedField: 'name',
+          });
+        } else if (
+          twist.type?.toLowerCase().includes(normalizedQuery) ||
+          twist.description?.toLowerCase().includes(normalizedQuery)
+        ) {
+          results.push({
+            id: twist.id,
+            name: twist.name,
+            type: 'twist',
+            description: twist.type || twist.description,
+            matchedField: 'type',
+          });
+        }
+      });
+
+      // Search Sessions
+      state.sessions.forEach((session) => {
+        if (
+          session.name.toLowerCase().includes(normalizedQuery) ||
+          session.description?.toLowerCase().includes(normalizedQuery)
+        ) {
+          results.push({
+            id: session.id,
+            name: session.name,
+            type: 'session',
+            description: session.description || 'Session',
+            matchedField: 'name',
+          });
+        }
+      });
+
+      return results;
     },
   };
 });

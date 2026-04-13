@@ -290,8 +290,8 @@ function Sessions() {
                       <span className="font-medium">🧙 Персонажи:</span>{' '}
                       {session.pcIds
                         .map((pcId) => pcs.find((pc) => pc.id === pcId))
-                        .filter(Boolean)
-                        .map((pc) => pc?.name)
+                        .filter((pc): pc is typeof pcs[0] => Boolean(pc))
+                        .map((pc) => pc.name)
                         .join(', ')}
                     </div>
                   )}
