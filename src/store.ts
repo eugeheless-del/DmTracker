@@ -195,10 +195,16 @@ export const useStore = create<StoreState>((set, get) => {
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
           const data = JSON.parse(stored);
+          // Ensure twists have npcIds and pcIds fields (for backward compatibility)
+          const twistsWithDefaults = (data.twists || []).map((twist: any) => ({
+            ...twist,
+            npcIds: twist.npcIds || [],
+            pcIds: twist.pcIds || [],
+          }));
           set({
             npcs: data.npcs || [],
             pcs: data.pcs || [],
-            twists: data.twists || [],
+            twists: twistsWithDefaults,
             sessions: data.sessions || [],
           });
         }

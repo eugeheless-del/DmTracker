@@ -30,10 +30,14 @@ export interface PC extends BaseEntity {
 // Twist - plot event or complication
 export interface Twist extends BaseEntity {
   description?: string;
+  trigger?: string; // condition that triggers the twist
   type?: 'revelation' | 'enemy' | 'opportunity' | 'obstacle' | 'alliance';
   consequence?: string;
+  status?: 'hidden' | 'ready' | 'revealed' | 'completed'; // twist status
   resolved?: boolean;
   sessionId?: string;
+  npcIds: string[]; // associated NPC references
+  pcIds: string[]; // associated PC references
 }
 
 // Gaming Session
