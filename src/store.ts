@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { StoreState, NPC, PC, Twist, Session } from './types';
+import { TwistInput } from './types';
 
 const STORAGE_KEY = 'dm_tracker_store';
 
@@ -117,7 +118,7 @@ export const useStore = create<StoreState>((set, get) => {
     getPcById: (id) => get().pcs.find((pc) => pc.id === id),
 
     // ===== Twist Methods =====
-    addTwist: (data) =>
+    addTwist: (data: TwistInput) =>
       set((state) => {
         const newTwist: Twist = {
           ...data,

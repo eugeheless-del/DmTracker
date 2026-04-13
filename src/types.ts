@@ -5,6 +5,10 @@ export interface BaseEntity {
   createdAt: number;
   updatedAt: number;
 }
+// Тип для данных формы при создании/редактировании
+export type TwistInput = Omit<Twist, 'id' | 'createdAt' | 'updatedAt'>;
+export type PCInput = Omit<PC, 'id' | 'createdAt' | 'updatedAt'>;
+export type NPCInput = Omit<NPC, 'id' | 'createdAt' | 'updatedAt'>;
 
 // Non-Player Character (NPC)
 export interface NPC extends BaseEntity {

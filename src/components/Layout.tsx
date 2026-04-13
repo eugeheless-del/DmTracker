@@ -17,6 +17,12 @@ function Layout() {
     { id: 'sessions', label: 'Сессии', icon: '📅' },
   ] as const
 
+  // Handle navigation to characters with optional selected character
+  const handleNavigateToCharacter = () => {
+    setCurrentScreen('characters')
+    setMobileMenuOpen(false)
+  }
+
   const renderScreen = () => {
     switch (currentScreen) {
       case 'dashboard':
@@ -24,7 +30,7 @@ function Layout() {
       case 'characters':
         return <Characters />
       case 'twists':
-        return <Twists />
+        return <Twists onNavigateToCharacter={handleNavigateToCharacter} />
       case 'sessions':
         return <Sessions />
       default:

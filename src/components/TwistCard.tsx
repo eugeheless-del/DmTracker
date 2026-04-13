@@ -1,15 +1,32 @@
 import { useState } from 'react';
 import { Twist } from '../types';
+import { useStore } from '../store';
 
 interface TwistCardProps {
   twist: Twist;
   onStatusChange: (twistId: string, newStatus: Twist['status']) => void;
   onEdit: (twist: Twist) => void;
   onDelete: (twist: Twist) => void;
+  onCharacterClick?: (characterId: string, isPC: boolean) => void;
 }
 
-export function TwistCard({ twist, onStatusChange, onEdit, onDelete }: TwistCardProps) {
-  // State for expanded view
+// Map twist types to Russian labels
+const twistTypeLabels: Record<string, string> = {
+  revelation: 'Откровение',
+  enemy: 'Враг',
+  opportunity: 'Возможность',
+  obstacle: 'Препятствие',
+  alliance: 'Союз',
+};
+
+export function TwistCard({
+  twist,
+  onStatusChange,
+  onEdit,
+  onDelete,
+  onCharacterClick,
+}: TwistCardProps) {
+  const { getNpcById, getPcById } = useStore();
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Get status badge color
@@ -44,13 +61,16 @@ export function TwistCard({ twist, onStatusChange, onEdit, onDelete }: TwistCard
     }
   };
 
-  // Handle status change with toast notification for 'revealed'
+  // Get twist type label
+  const getTwistTypeLabel = (type?: string): string => {
+    return twistTypeLabels[type || ''] || type || 'Неизвестный тип';
+  };
+
+  // Handle status change with notification
   const handleStatusChange = (newStatus: Twist['status']) => {
     onStatusChange(twist.id, newStatus);
     if (newStatus === 'revealed') {
-      // Toast notification (placeholder)
       console.log(`🔥 Твист "${twist.name}" раскрыт!`);
-      // Show browser notification (can be replaced with proper toast library later)
       if (window.confirm(`✨ Твист "${twist.name}" раскрыт!`)) {
         // Just confirm for now
       }
@@ -68,17 +88,24 @@ export function TwistCard({ twist, onStatusChange, onEdit, onDelete }: TwistCard
           <div className="flex-1 min-w-0">
             {/* Title */}
             <h3 className="text-lg font-bold text-white truncate">{twist.name}</h3>
-            
+
+            {/* Type badge */}
+            {twist.type && (
+              <p className="text-xs mt-1 inline-block px-2 py-1 bg-purple-600 text-purple-100 rounded">
+                {getTwistTypeLabel(twist.type)}
+              </p>
+            )}
+
             {/* Trigger */}
             {twist.trigger && (
-              <p className="text-sm text-slate-400 mt-1 truncate">
+              <p className="text-sm text-slate-400 mt-2 truncate">
                 ⚡ Триггер: {twist.trigger}
               </p>
             )}
-            
-            {/* IDs preview */}
+
+            {/* Characters preview */}
             {(twist.npcIds?.length > 0 || twist.pcIds?.length > 0) && (
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-slate-500 mt-2">
                 {twist.npcIds?.length > 0 && `НПЛ: ${twist.npcIds.length}`}
                 {twist.npcIds?.length > 0 && twist.pcIds?.length > 0 && ' • '}
                 {twist.pcIds?.length > 0 && `ПЛ: ${twist.pcIds.length}`}
@@ -108,6 +135,14 @@ export function TwistCard({ twist, onStatusChange, onEdit, onDelete }: TwistCard
             </div>
           )}
 
+          {/* Type */}
+          {twist.type && (
+            <div>
+              <p className="text-xs font-semibold text-slate-400 mb-1">ТИП</p>
+              <p className="text-sm text-slate-300">{getTwistTypeLabel(twist.type)}</p>
+            </div>
+          )}
+
           {/* Consequence */}
           {twist.consequence && (
             <div>
@@ -116,29 +151,35 @@ export function TwistCard({ twist, onStatusChange, onEdit, onDelete }: TwistCard
             </div>
           )}
 
-          {/* Type */}
-          {twist.type && (
-            <div>
-              <p className="text-xs font-semibold text-slate-400 mb-1">ТИП</p>
-              <p className="text-sm text-slate-300">{twist.type}</p>
-            </div>
-          )}
-
           {/* Associated characters */}
           {(twist.npcIds?.length > 0 || twist.pcIds?.length > 0) && (
             <div>
-              <p className="text-xs font-semibold text-slate-400 mb-2">СВЯЗАННЫЕ</p>
+              <p className="text-xs font-semibold text-slate-400 mb-2">СВЯЗАННЫЕ ПЕРСОНАЖИ</p>
               <div className="space-y-1">
-                {twist.npcIds?.map((npcId) => (
-                  <p key={npcId} className="text-sm text-slate-300">
-                    → НПЛ: <span className="font-mono text-slate-400">{npcId}</span>
-                  </p>
-                ))}
-                {twist.pcIds?.map((pcId) => (
-                  <p key={pcId} className="text-sm text-slate-300">
-                    → ПЛ: <span className="font-mono text-slate-400">{pcId}</span>
-                  </p>
-                ))}
+                {twist.npcIds?.map((npcId) => {
+                  const npc = getNpcById(npcId);
+                  return (
+                    <button
+                      key={npcId}
+                      onClick={() => onCharacterClick?.(npcId, false)}
+                      className="text-sm text-slate-300 hover:text-blue-400 transition-colors text-left block"
+                    >
+                      → НПЛ: <span className="font-medium underline">{npc?.name || npcId}</span>
+                    </button>
+                  );
+                })}
+                {twist.pcIds?.map((pcId) => {
+                  const pc = getPcById(pcId);
+                  return (
+                    <button
+                      key={pcId}
+                      onClick={() => onCharacterClick?.(pcId, true)}
+                      className="text-sm text-slate-300 hover:text-blue-400 transition-colors text-left block"
+                    >
+                      → ПЛ: <span className="font-medium underline">{pc?.name || pcId}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}

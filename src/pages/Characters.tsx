@@ -1,174 +1,141 @@
 import { useState } from 'react';
 import { useStore } from '../store';
+import { PC, NPC } from '../types';
 import { CharacterForm } from '../components/CharacterForm';
 import { CharacterCard } from '../components/CharacterCard';
-import { PC, NPC } from '../types';
 
-export default function Characters() {
-  // Текущий активный таб: 'pc' (ПЛ) или 'npc' (НПЛ)
-  const [activeTab, setActiveTab] = useState<'pc' | 'npc'>('pc');
-  
-  // Модальное окно: показано или скрыто
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  
-  // Редактируемый персонаж (undefined при создании нового)
-  const [editingCharacter, setEditingCharacter] = useState<PC | NPC | undefined>(undefined);
+function Characters() {
+  const { pcs, npcs, addPc, updatePc, deletePc, addNpc, updateNpc, deleteNpc } = useStore();
+  const [showForm, setShowForm] = useState(false);
+  const [formType, setFormType] = useState<'pc' | 'npc'>('pc');
+  const [editingCharacter, setEditingCharacter] = useState<PC | NPC | undefined>();
 
-  // Получаем данные из Zustand store
-  const pcs = useStore((state) => state.pcs);
-  const npcs = useStore((state) => state.npcs);
-  const addPc = useStore((state) => state.addPc);
-  const updatePc = useStore((state) => state.updatePc);
-  const deletePc = useStore((state) => state.deletePc);
-  const addNpc = useStore((state) => state.addNpc);
-  const updateNpc = useStore((state) => state.updateNpc);
-  const deleteNpc = useStore((state) => state.deleteNpc);
-
-  // Обработчик открытия модального окна для создания нового персонажа
-  const handleAddCharacter = () => {
+  // Handle new character
+  const handleNewCharacter = (type: 'pc' | 'npc') => {
+    setFormType(type);
     setEditingCharacter(undefined);
-    setIsModalOpen(true);
+    setShowForm(true);
   };
 
-  // Обработчик открытия модального окна для редактирования персонажа
-  const handleEditCharacter = (character: PC | NPC) => {
-    setEditingCharacter(character);
-    setIsModalOpen(true);
-  };
-
-  // Обработчик закрытия модального окна
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setEditingCharacter(undefined);
-  };
-
-  // Обработчик сохранения формы
-  const handleSubmitForm = (data: any) => {
-    if (activeTab === 'pc') {
-      // Если редактируем существующего ПЛ
-      if (editingCharacter && 'id' in editingCharacter) {
+  // Handle character submit
+  const handleCharacterSubmit = (data: any) => {
+    if (editingCharacter) {
+      if (formType === 'pc') {
         updatePc(editingCharacter.id, data);
       } else {
-        // Если создаём нового ПЛ
-        addPc(data);
+        updateNpc(editingCharacter.id, data);
       }
     } else {
-      // Если редактируем существующего НПЛ
-      if (editingCharacter && 'id' in editingCharacter) {
-        updateNpc(editingCharacter.id, data);
+      if (formType === 'pc') {
+        addPc(data);
       } else {
-        // Если создаём нового НПЛ
         addNpc(data);
       }
     }
-    handleCloseModal();
+    setShowForm(false);
+    setEditingCharacter(undefined);
   };
 
-  // Обработчик удаления персонажа
-  const handleDeleteCharacter = (character: PC | NPC) => {
-    // Простое подтверждение перед удалением
-    if (confirm(`Удалить ${character.name}?`)) {
-      if (activeTab === 'pc') {
-        if ('id' in character) deletePc(character.id);
+  // Handle character edit
+  const handleEditCharacter = (character: PC | NPC, type: 'pc' | 'npc') => {
+    setFormType(type);
+    setEditingCharacter(character);
+    setShowForm(true);
+  };
+
+  // Handle character delete
+  const handleDeleteCharacter = (character: PC | NPC, type: 'pc' | 'npc') => {
+    if (window.confirm(`Удалить персонажа "${character.name}"?`)) {
+      if (type === 'pc') {
+        deletePc(character.id);
       } else {
-        if ('id' in character) deleteNpc(character.id);
+        deleteNpc(character.id);
       }
     }
   };
 
-  // Получаем список персонажей для активного таба
-  const characters = activeTab === 'pc' ? pcs : npcs;
-  const characterType = activeTab === 'pc' ? 'pc' : 'npc';
+  const allEmpty = pcs.length === 0 && npcs.length === 0;
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-white">🧙 Персонажи</h1>
-
-      {/* Таб-навигация */}
-      <div className="flex gap-2 border-b border-slate-700">
-        <button
-          onClick={() => setActiveTab('pc')}
-          className={`px-6 py-2 font-medium text-lg transition-colors border-b-2 ${
-            activeTab === 'pc'
-              ? 'text-blue-400 border-blue-400'
-              : 'text-slate-400 border-transparent hover:text-slate-300'
-          }`}
-        >
-          👥 Игроки (PC)
-        </button>
-        <button
-          onClick={() => setActiveTab('npc')}
-          className={`px-6 py-2 font-medium text-lg transition-colors border-b-2 ${
-            activeTab === 'npc'
-              ? 'text-blue-400 border-blue-400'
-              : 'text-slate-400 border-transparent hover:text-slate-300'
-          }`}
-        >
-          🤖 NPC
-        </button>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <h2 className="text-3xl font-bold">🧙 Персонажи</h2>
+        <div className="flex gap-2">
+          <button
+            onClick={() => handleNewCharacter('pc')}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors text-sm"
+          >
+            + ПЛ
+          </button>
+          <button
+            onClick={() => handleNewCharacter('npc')}
+            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg font-medium transition-colors text-sm"
+          >
+            + НПЛ
+          </button>
+        </div>
       </div>
 
-      {/* Кнопка "Добавить персонажа" */}
-      <div>
-        <button
-          onClick={handleAddCharacter}
-          className="px-6 py-3 bg-green-600 hover:bg-green-500 text-white font-bold rounded-lg transition-colors shadow-lg"
-        >
-          + Добавить {activeTab === 'pc' ? 'ПЛ' : 'НПЛ'}
-        </button>
-      </div>
-
-      {/* Список персонажей в виде карточек */}
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-        {characters.length > 0 ? (
-          characters.map((character, index) => (
-            <div
-              key={character.id}
-              style={{
-                // Плавная анимация появления с задержкой для каждой карточки
-                animation: `slideInUp 0.5s ease-out ${index * 0.1}s both`,
-              }}
-            >
-              <CharacterCard
-                character={character}
-                type={characterType}
-                onEdit={handleEditCharacter}
-                onDelete={handleDeleteCharacter}
-              />
-            </div>
-          ))
-        ) : (
-          <div className="col-span-full text-center py-12">
-            <p className="text-slate-400 text-lg">
-              Нет {activeTab === 'pc' ? 'игроков' : 'неиграемых персонажей'}. Добавьте первого!
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Модальное окно с формой */}
-      {isModalOpen && (
+      {/* Show form modal */}
+      {showForm && (
         <CharacterForm
-          type={activeTab}
+          type={formType}
           character={editingCharacter}
-          onSubmit={handleSubmitForm}
-          onClose={handleCloseModal}
+          onSubmit={handleCharacterSubmit}
+          onClose={() => {
+            setShowForm(false);
+            setEditingCharacter(undefined);
+          }}
         />
       )}
 
-      {/* Стили для анимаций */}
-      <style>{`
-        @keyframes slideInUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
+      {/* Empty state */}
+      {allEmpty ? (
+        <div className="bg-slate-800 rounded-lg p-8 border border-slate-700 text-center text-slate-400">
+          <p className="text-lg mb-2">Пока нет персонажей</p>
+          <p className="text-sm">Нажмите кнопку выше, чтобы добавить первого</p>
+        </div>
+      ) : (
+        <div className="space-y-8">
+          {/* Player Characters (ПЛ) */}
+          {pcs.length > 0 && (
+            <div>
+              <h3 className="text-xl font-bold mb-4 text-blue-400">ПЛ (Персонажи Игроков)</h3>
+              <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                {pcs.map((pc) => (
+                  <CharacterCard
+                    key={pc.id}
+                    character={pc}
+                    type="pc"
+                    onEdit={() => handleEditCharacter(pc, 'pc')}
+                    onDelete={() => handleDeleteCharacter(pc, 'pc')}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Non-Player Characters (НПЛ) */}
+          {npcs.length > 0 && (
+            <div>
+              <h3 className="text-xl font-bold mb-4 text-purple-400">НПЛ (Персонажи без Игроков)</h3>
+              <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                {npcs.map((npc) => (
+                  <CharacterCard
+                    key={npc.id}
+                    character={npc}
+                    type="npc"
+                    onEdit={() => handleEditCharacter(npc, 'npc')}
+                    onDelete={() => handleDeleteCharacter(npc, 'npc')}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
-  )
+  );
 }
+
+export default Characters;
