@@ -73,31 +73,31 @@ export interface StoreState {
   sessions: Session[];
 
   // NPC actions
-  addNpc: (npc: Omit<NPC, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  updateNpc: (id: string, data: Partial<Omit<NPC, 'id' | 'createdAt'>>) => void;
-  deleteNpc: (id: string) => void;
+  addNpc: (npc: Omit<NPC, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateNpc: (id: string, data: Partial<Omit<NPC, 'id' | 'createdAt'>>) => Promise<void>;
+  deleteNpc: (id: string) => Promise<void>;
   getNpcById: (id: string) => NPC | undefined;
 
   // PC actions
-  addPc: (pc: Omit<PC, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  updatePc: (id: string, data: Partial<Omit<PC, 'id' | 'createdAt'>>) => void;
-  deletePc: (id: string) => void;
+  addPc: (pc: Omit<PC, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updatePc: (id: string, data: Partial<Omit<PC, 'id' | 'createdAt'>>) => Promise<void>;
+  deletePc: (id: string) => Promise<void>;
   getPcById: (id: string) => PC | undefined;
 
   // Twist actions
-  addTwist: (twist: Omit<Twist, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  updateTwist: (id: string, data: Partial<Omit<Twist, 'id' | 'createdAt'>>) => void;
-  deleteTwist: (id: string) => void;
+  addTwist: (twist: Omit<Twist, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateTwist: (id: string, data: Partial<Omit<Twist, 'id' | 'createdAt'>>) => Promise<void>;
+  deleteTwist: (id: string) => Promise<void>;
   getTwistById: (id: string) => Twist | undefined;
 
   // Session actions
-  addSession: (session: Omit<Session, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  updateSession: (id: string, data: Partial<Omit<Session, 'id' | 'createdAt'>>) => void;
-  deleteSession: (id: string) => void;
+  addSession: (session: Omit<Session, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateSession: (id: string, data: Partial<Omit<Session, 'id' | 'createdAt'>>) => Promise<void>;
+  deleteSession: (id: string) => Promise<void>;
   getSessionById: (id: string) => Session | undefined;
 
   // Utility
-  loadFromStorage: () => void;
-  clearAll: () => void;
+  loadFromSupabase: () => Promise<void>;
+  clearAll: () => Promise<void>;
   searchEntities: (query: string) => SearchResult[];
 }

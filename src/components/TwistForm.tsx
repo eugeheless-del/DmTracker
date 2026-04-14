@@ -6,7 +6,7 @@ interface TwistFormProps {
   // Редактируемый твист (undefined при создании нового)
   twist?: Twist;
   // Коллбэк при сохранении формы
-  onSubmit: (data: any) => void;
+  onSubmit: (data: any) => Promise<void>;
   // Коллбэк при закрытии модального окна
   onClose: () => void;
 }
@@ -80,10 +80,15 @@ export function TwistForm({ twist, onSubmit, onClose }: TwistFormProps) {
   };
 
   // Handle form submit
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-    onSubmit(formData);
+    try {
+      await onSubmit(formData);
+    } catch (error) {
+      alert('Ошибка при сохранении твиста. Попробуйте снова.');
+      console.warn('Failed to submit twist:', error);
+    }
   };
 
   return (

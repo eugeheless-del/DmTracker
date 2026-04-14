@@ -2,10 +2,19 @@ import { useState } from 'react';
 import { useStore } from '../store';
 
 function Dashboard() {
+ 
   const { pcs, twists, sessions } = useStore();
+  if (!pcs || !twists || !sessions) {
+    return <div>Загрузка данных...</div>;
+  }
   const [notes, setNotes] = useState(() => {
     const saved = localStorage.getItem('dm_tracker_quick_notes');
     return saved || '';
+  });
+   console.log('Рендерится Dashboard! Данные:', {
+    pcs: pcs.length,
+    twists: twists.length,
+    sessions: sessions.length,
   });
 
   // Save notes to localStorage
@@ -18,6 +27,20 @@ function Dashboard() {
   const activeTwists = twists.filter((t) => t.status !== 'completed');
 
   return (
+
+  <div className="p-6">
+    {/* Тестовый блок для проверки видимости */}
+    {/* <div style={{ 
+      border: '4px solid #fbbf24', 
+      padding: '16px', 
+      marginBottom: '20px',
+      backgroundColor: '#1e293b',
+      color: '#fbbf24'
+    }}>
+      <h2 className="text-xl font-bold">🔍 DASHBOARD ЗАГРУЗИЛСЯ!</h2>
+      <p>PCs: {pcs?.length || 0} | Twists: {twists?.length || 0}</p>
+    </div> */}
+
     <div className="space-y-6">
       <h2 className="text-3xl font-bold">📊 Dashboard</h2>
 
@@ -89,6 +112,7 @@ function Dashboard() {
           </p>
         </div>
       )}
+    </div>
     </div>
   );
 }

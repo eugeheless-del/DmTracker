@@ -1,11 +1,7 @@
 import { create } from 'zustand';
 import { StoreState, NPC, PC, Twist, Session, SearchResult } from './types';
 import { TwistInput } from './types';
-
-const STORAGE_KEY = 'dm_tracker_store';
-
-// Utility: generate unique ID
-const generateId = (): string => `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+import { supabase } from './supabaseClient';
 
 // Utility: get current timestamp
 const now = (): number => Date.now();
@@ -19,207 +15,290 @@ const initialState = {
 };
 
 export const useStore = create<StoreState>((set, get) => {
-  // Middleware to persist state to localStorage
-  const persistState = (state: Partial<StoreState>) => {
-    try {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-          npcs: state.npcs,
-          pcs: state.pcs,
-          twists: state.twists,
-          sessions: state.sessions,
-        })
-      );
-    } catch (error) {
-      console.warn('Failed to save state to localStorage:', error);
-    }
-  };
-
   return {
     ...initialState,
 
     // ===== NPC Methods =====
-    addNpc: (data) =>
-      set((state) => {
-        const newNpc: NPC = {
-          ...data,
-          id: generateId(),
-          createdAt: now(),
-          updatedAt: now(),
-        };
-        const newState = { npcs: [...state.npcs, newNpc] };
-        persistState(newState);
-        return newState;
-      }),
+    addNpc: async (data) => {
+      try {
+        const { error } = await supabase
+          .from('npcs')
+          .insert([{ ...data, createdAt: now(), updatedAt: now() }]);
 
-    updateNpc: (id, data) =>
-      set((state) => {
-        const newNpcs = state.npcs.map((npc) =>
-          npc.id === id ? { ...npc, ...data, updatedAt: now() } : npc
-        );
-        const newState = { npcs: newNpcs };
-        persistState(newState);
-        return newState;
-      }),
+        if (error) throw error;
 
-    deleteNpc: (id) =>
-      set((state) => {
-        const newNpcs = state.npcs.filter((npc) => npc.id !== id);
-        // Remove NPC from all sessions
-        const newSessions = state.sessions.map((session) => ({
-          ...session,
-          npcIds: session.npcIds.filter((npcId) => npcId !== id),
-        }));
-        const newState = { npcs: newNpcs, sessions: newSessions };
-        persistState(newState);
-        return newState;
-      }),
+        // Refresh data after insert
+        const { data: npcs, error: fetchError } = await supabase.from('npcs').select('*');
+        if (fetchError) throw fetchError;
+
+        set({ npcs: npcs as NPC[] });
+      } catch (error) {
+        console.warn('Failed to add NPC:', error);
+      }
+    },
+
+    updateNpc: async (id, data) => {
+      try {
+        const { error } = await supabase
+          .from('npcs')
+          .update({ ...data, updatedAt: now() })
+          .eq('id', id);
+
+        if (error) throw error;
+
+        // Refresh data after update
+        const { data: npcs, error: fetchError } = await supabase.from('npcs').select('*');
+        if (fetchError) throw fetchError;
+
+        set({ npcs: npcs as NPC[] });
+      } catch (error) {
+        console.warn('Failed to update NPC:', error);
+      }
+    },
+
+    deleteNpc: async (id) => {
+      try {
+        const { error } = await supabase
+          .from('npcs')
+          .delete()
+          .eq('id', id);
+
+        if (error) throw error;
+
+        set((state) => {
+          const newNpcs = state.npcs.filter((npc) => npc.id !== id);
+          const newSessions = state.sessions.map((session) => ({
+            ...session,
+            npcIds: session.npcIds.filter((npcId) => npcId !== id),
+          }));
+          return { npcs: newNpcs, sessions: newSessions };
+        });
+      } catch (error) {
+        console.warn('Failed to delete NPC:', error);
+      }
+    },
 
     getNpcById: (id) => get().npcs.find((npc) => npc.id === id),
 
     // ===== PC Methods =====
-    addPc: (data) =>
-      set((state) => {
-        const newPc: PC = {
-          ...data,
-          id: generateId(),
-          createdAt: now(),
-          updatedAt: now(),
-        };
-        const newState = { pcs: [...state.pcs, newPc] };
-        persistState(newState);
-        return newState;
-      }),
+    addPc: async (data) => {
+      try {
+        const { error } = await supabase
+          .from('pcs')
+          .insert([{ ...data, createdAt: now(), updatedAt: now() }]);
 
-    updatePc: (id, data) =>
-      set((state) => {
-        const newPcs = state.pcs.map((pc) =>
-          pc.id === id ? { ...pc, ...data, updatedAt: now() } : pc
-        );
-        const newState = { pcs: newPcs };
-        persistState(newState);
-        return newState;
-      }),
+        if (error) throw error;
 
-    deletePc: (id) =>
-      set((state) => {
-        const newPcs = state.pcs.filter((pc) => pc.id !== id);
-        // Remove PC from all sessions
-        const newSessions = state.sessions.map((session) => ({
-          ...session,
-          pcIds: session.pcIds.filter((pcId) => pcId !== id),
-        }));
-        const newState = { pcs: newPcs, sessions: newSessions };
-        persistState(newState);
-        return newState;
-      }),
+        // Refresh data after insert
+        const { data: pcs, error: fetchError } = await supabase.from('pcs').select('*');
+        if (fetchError) throw fetchError;
+
+        set({ pcs: pcs as PC[] });
+      } catch (error) {
+        console.warn('Failed to add PC:', error);
+      }
+    },
+
+    updatePc: async (id, data) => {
+      try {
+        const { error } = await supabase
+          .from('pcs')
+          .update({ ...data, updatedAt: now() })
+          .eq('id', id);
+
+        if (error) throw error;
+
+        // Refresh data after update
+        const { data: pcs, error: fetchError } = await supabase.from('pcs').select('*');
+        if (fetchError) throw fetchError;
+
+        set({ pcs: pcs as PC[] });
+      } catch (error) {
+        console.warn('Failed to update PC:', error);
+      }
+    },
+
+    deletePc: async (id) => {
+      try {
+        const { error } = await supabase
+          .from('pcs')
+          .delete()
+          .eq('id', id);
+
+        if (error) throw error;
+
+        set((state) => {
+          const newPcs = state.pcs.filter((pc) => pc.id !== id);
+          const newSessions = state.sessions.map((session) => ({
+            ...session,
+            pcIds: session.pcIds.filter((pcId) => pcId !== id),
+          }));
+          return { pcs: newPcs, sessions: newSessions };
+        });
+      } catch (error) {
+        console.warn('Failed to delete PC:', error);
+      }
+    },
 
     getPcById: (id) => get().pcs.find((pc) => pc.id === id),
 
     // ===== Twist Methods =====
-    addTwist: (data: TwistInput) =>
-      set((state) => {
-        const newTwist: Twist = {
-          ...data,
-          id: generateId(),
-          createdAt: now(),
-          updatedAt: now(),
-        };
-        const newState = { twists: [...state.twists, newTwist] };
-        persistState(newState);
-        return newState;
-      }),
+    addTwist: async (data: TwistInput) => {
+      try {
+        const { error } = await supabase
+          .from('twists')
+          .insert([{ ...data, createdAt: now(), updatedAt: now() }]);
 
-    updateTwist: (id, data) =>
-      set((state) => {
-        const newTwists = state.twists.map((twist) =>
-          twist.id === id ? { ...twist, ...data, updatedAt: now() } : twist
-        );
-        const newState = { twists: newTwists };
-        persistState(newState);
-        return newState;
-      }),
+        if (error) throw error;
 
-    deleteTwist: (id) =>
-      set((state) => {
-        const newTwists = state.twists.filter((twist) => twist.id !== id);
-        // Remove Twist from all sessions
-        const newSessions = state.sessions.map((session) => ({
-          ...session,
-          twistIds: session.twistIds.filter((twistId) => twistId !== id),
-        }));
-        const newState = { twists: newTwists, sessions: newSessions };
-        persistState(newState);
-        return newState;
-      }),
+        // Refresh data after insert
+        const { data: twists, error: fetchError } = await supabase.from('twists').select('*');
+        if (fetchError) throw fetchError;
+
+        set({ twists: twists as Twist[] });
+      } catch (error) {
+        console.warn('Failed to add Twist:', error);
+      }
+    },
+
+    updateTwist: async (id, data) => {
+      try {
+        const { error } = await supabase
+          .from('twists')
+          .update({ ...data, updatedAt: now() })
+          .eq('id', id);
+
+        if (error) throw error;
+
+        // Refresh data after update
+        const { data: twists, error: fetchError } = await supabase.from('twists').select('*');
+        if (fetchError) throw fetchError;
+
+        set({ twists: twists as Twist[] });
+      } catch (error) {
+        console.warn('Failed to update Twist:', error);
+      }
+    },
+
+    deleteTwist: async (id) => {
+      try {
+        const { error } = await supabase
+          .from('twists')
+          .delete()
+          .eq('id', id);
+
+        if (error) throw error;
+
+        set((state) => {
+          const newTwists = state.twists.filter((twist) => twist.id !== id);
+          const newSessions = state.sessions.map((session) => ({
+            ...session,
+            twistIds: session.twistIds.filter((twistId) => twistId !== id),
+          }));
+          return { twists: newTwists, sessions: newSessions };
+        });
+      } catch (error) {
+        console.warn('Failed to delete Twist:', error);
+      }
+    },
 
     getTwistById: (id) => get().twists.find((twist) => twist.id === id),
 
     // ===== Session Methods =====
-    addSession: (data) =>
-      set((state) => {
-        const newSession: Session = {
-          ...data,
-          id: generateId(),
-          createdAt: now(),
-          updatedAt: now(),
-        };
-        const newState = { sessions: [...state.sessions, newSession] };
-        persistState(newState);
-        return newState;
-      }),
+    addSession: async (data) => {
+      try {
+        const { error } = await supabase
+          .from('sessions')
+          .insert([{ ...data, createdAt: now(), updatedAt: now() }]);
 
-    updateSession: (id, data) =>
-      set((state) => {
-        const newSessions = state.sessions.map((session) =>
-          session.id === id ? { ...session, ...data, updatedAt: now() } : session
-        );
-        const newState = { sessions: newSessions };
-        persistState(newState);
-        return newState;
-      }),
+        if (error) throw error;
 
-    deleteSession: (id) =>
-      set((state) => {
-        const newSessions = state.sessions.filter((session) => session.id !== id);
-        const newState = { sessions: newSessions };
-        persistState(newState);
-        return newState;
-      }),
+        // Refresh data after insert
+        const { data: sessions, error: fetchError } = await supabase.from('sessions').select('*');
+        if (fetchError) throw fetchError;
+
+        set({ sessions: sessions as Session[] });
+      } catch (error) {
+        console.warn('Failed to add Session:', error);
+      }
+    },
+
+    updateSession: async (id, data) => {
+      try {
+        const { error } = await supabase
+          .from('sessions')
+          .update({ ...data, updatedAt: now() })
+          .eq('id', id);
+
+        if (error) throw error;
+
+        // Refresh data after update
+        const { data: sessions, error: fetchError } = await supabase.from('sessions').select('*');
+        if (fetchError) throw fetchError;
+
+        set({ sessions: sessions as Session[] });
+      } catch (error) {
+        console.warn('Failed to update Session:', error);
+      }
+    },
+
+    deleteSession: async (id) => {
+      try {
+        const { error } = await supabase
+          .from('sessions')
+          .delete()
+          .eq('id', id);
+
+        if (error) throw error;
+
+        set((state) => ({
+          sessions: state.sessions.filter((session) => session.id !== id),
+        }));
+      } catch (error) {
+        console.warn('Failed to delete Session:', error);
+      }
+    },
 
     getSessionById: (id) => get().sessions.find((session) => session.id === id),
 
     // ===== Utility Methods =====
-    loadFromStorage: () => {
+    loadFromSupabase: async () => {
       try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-          const data = JSON.parse(stored);
-          // Ensure twists have npcIds and pcIds fields (for backward compatibility)
-          const twistsWithDefaults = (data.twists || []).map((twist: any) => ({
-            ...twist,
-            npcIds: twist.npcIds || [],
-            pcIds: twist.pcIds || [],
-          }));
-          set({
-            npcs: data.npcs || [],
-            pcs: data.pcs || [],
-            twists: twistsWithDefaults,
-            sessions: data.sessions || [],
-          });
-        }
+        const [pcsRes, npcsRes, twistsRes, sessionsRes] = await Promise.all([
+          supabase.from('pcs').select('*'),
+          supabase.from('npcs').select('*'),
+          supabase.from('twists').select('*'),
+          supabase.from('sessions').select('*'),
+        ]);
+
+        if (pcsRes.error) throw pcsRes.error;
+        if (npcsRes.error) throw npcsRes.error;
+        if (twistsRes.error) throw twistsRes.error;
+        if (sessionsRes.error) throw sessionsRes.error;
+
+        set({
+          pcs: (pcsRes.data || []) as PC[],
+          npcs: (npcsRes.data || []) as NPC[],
+          twists: (twistsRes.data || []) as Twist[],
+          sessions: (sessionsRes.data || []) as Session[],
+        });
       } catch (error) {
-        console.warn('Failed to load state from localStorage:', error);
+        console.warn('Failed to load data from Supabase:', error);
       }
     },
 
-    clearAll: () => {
-      set(initialState);
+    clearAll: async () => {
       try {
-        localStorage.removeItem(STORAGE_KEY);
+        await Promise.all([
+          supabase.from('pcs').delete().neq('id', ''),
+          supabase.from('npcs').delete().neq('id', ''),
+          supabase.from('twists').delete().neq('id', ''),
+          supabase.from('sessions').delete().neq('id', ''),
+        ]);
+
+        set(initialState);
       } catch (error) {
-        console.warn('Failed to clear localStorage:', error);
+        console.warn('Failed to clear all data:', error);
       }
     },
 

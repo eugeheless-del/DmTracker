@@ -24,37 +24,42 @@ function Sessions() {
   };
 
   // Handle session submit
-  const handleSessionSubmit = (e: React.FormEvent) => {
+  const handleSessionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) {
       alert('Введите название сессии');
       return;
     }
 
-    if (editingSession) {
-      updateSession(editingSession.id, {
-        name: formData.name,
-        description: formData.description,
-        date: formData.date ? new Date(formData.date).getTime() : undefined,
-        notes: formData.notes,
-        twistIds: editingSession.twistIds,
-        npcIds: editingSession.npcIds,
-        pcIds: formData.selectedPcIds,
-      });
-    } else {
-      addSession({
-        name: formData.name,
-        description: formData.description,
-        date: formData.date ? new Date(formData.date).getTime() : undefined,
-        notes: formData.notes,
-        twistIds: [],
-        npcIds: [],
-        pcIds: formData.selectedPcIds,
-      });
+    try {
+      if (editingSession) {
+        await updateSession(editingSession.id, {
+          name: formData.name,
+          description: formData.description,
+          date: formData.date ? new Date(formData.date).getTime() : undefined,
+          notes: formData.notes,
+          twistIds: editingSession.twistIds,
+          npcIds: editingSession.npcIds,
+          pcIds: formData.selectedPcIds,
+        });
+      } else {
+        await addSession({
+          name: formData.name,
+          description: formData.description,
+          date: formData.date ? new Date(formData.date).getTime() : undefined,
+          notes: formData.notes,
+          twistIds: [],
+          npcIds: [],
+          pcIds: formData.selectedPcIds,
+        });
+      }
+      setShowForm(false);
+      setEditingSession(undefined);
+      setFormData({ name: '', description: '', date: '', notes: '', selectedPcIds: [] });
+    } catch (error) {
+      alert('Ошибка при сохранении сессии. Попробуйте снова.');
+      console.warn('Failed to submit session:', error);
     }
-    setShowForm(false);
-    setEditingSession(undefined);
-    setFormData({ name: '', description: '', date: '', notes: '', selectedPcIds: [] });
   };
 
   // Handle session edit
@@ -74,9 +79,14 @@ function Sessions() {
   };
 
   // Handle session delete
-  const handleDeleteSession = (session: Session) => {
+  const handleDeleteSession = async (session: Session) => {
     if (window.confirm(`Удалить сессию "${session.name}"?`)) {
-      deleteSession(session.id);
+      try {
+        await deleteSession(session.id);
+      } catch (error) {
+        alert('Ошибка при удалении сессии. Попробуйте снова.');
+        console.warn('Failed to delete session:', error);
+      }
     }
   };
 

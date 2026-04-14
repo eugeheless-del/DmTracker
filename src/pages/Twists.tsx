@@ -20,14 +20,19 @@ function Twists({ onNavigateToCharacter }: TwistsProps) {
   };
 
   // Handle twist submit (create or update)
-  const handleTwistSubmit = (data: any) => {
-    if (editingTwist) {
-      updateTwist(editingTwist.id, data);
-    } else {
-      addTwist(data);
+  const handleTwistSubmit = async (data: any) => {
+    try {
+      if (editingTwist) {
+        await updateTwist(editingTwist.id, data);
+      } else {
+        await addTwist(data);
+      }
+      setShowForm(false);
+      setEditingTwist(undefined);
+    } catch (error) {
+      alert('Ошибка при сохранении твиста. Попробуйте снова.');
+      console.warn('Failed to submit twist:', error);
     }
-    setShowForm(false);
-    setEditingTwist(undefined);
   };
 
   // Handle twist edit
@@ -37,15 +42,25 @@ function Twists({ onNavigateToCharacter }: TwistsProps) {
   };
 
   // Handle twist delete
-  const handleDeleteTwist = (twist: Twist) => {
+  const handleDeleteTwist = async (twist: Twist) => {
     if (window.confirm(`Удалить твист "${twist.name}"?`)) {
-      deleteTwist(twist.id);
+      try {
+        await deleteTwist(twist.id);
+      } catch (error) {
+        alert('Ошибка при удалении твиста. Попробуйте снова.');
+        console.warn('Failed to delete twist:', error);
+      }
     }
   };
 
   // Handle status change
-  const handleStatusChange = (twistId: string, newStatus: Twist['status']) => {
-    updateTwist(twistId, { status: newStatus });
+  const handleStatusChange = async (twistId: string, newStatus: Twist['status']) => {
+    try {
+      await updateTwist(twistId, { status: newStatus });
+    } catch (error) {
+      alert('Ошибка при изменении статуса. Попробуйте снова.');
+      console.warn('Failed to update twist status:', error);
+    }
   };
 
   return (

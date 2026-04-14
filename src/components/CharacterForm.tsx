@@ -7,7 +7,7 @@ interface CharacterFormProps {
   // Редактируемый персонаж (undefined при создании нового)
   character?: PC | NPC;
   // Коллбэк при сохранении формы
-  onSubmit: (data: any) => void;
+  onSubmit: (data: any) => Promise<void>;
   // Коллбэк при закрытии модального окна
   onClose: () => void;
 }
@@ -42,10 +42,15 @@ export function CharacterForm({ type, character, onSubmit, onClose }: CharacterF
   };
 
   // Обработчик отправки формы
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-    onSubmit(formData);
+    try {
+      await onSubmit(formData);
+    } catch (error) {
+      alert('Ошибка при сохранении персонажа. Попробуйте снова.');
+      console.warn('Failed to submit character:', error);
+    }
   };
 
   return (

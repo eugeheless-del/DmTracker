@@ -18,22 +18,27 @@ function Characters() {
   };
 
   // Handle character submit
-  const handleCharacterSubmit = (data: any) => {
-    if (editingCharacter) {
-      if (formType === 'pc') {
-        updatePc(editingCharacter.id, data);
+  const handleCharacterSubmit = async (data: any) => {
+    try {
+      if (editingCharacter) {
+        if (formType === 'pc') {
+          await updatePc(editingCharacter.id, data);
+        } else {
+          await updateNpc(editingCharacter.id, data);
+        }
       } else {
-        updateNpc(editingCharacter.id, data);
+        if (formType === 'pc') {
+          await addPc(data);
+        } else {
+          await addNpc(data);
+        }
       }
-    } else {
-      if (formType === 'pc') {
-        addPc(data);
-      } else {
-        addNpc(data);
-      }
+      setShowForm(false);
+      setEditingCharacter(undefined);
+    } catch (error) {
+      alert('Ошибка при сохранении персонажа. Попробуйте снова.');
+      console.warn('Failed to submit character:', error);
     }
-    setShowForm(false);
-    setEditingCharacter(undefined);
   };
 
   // Handle character edit
@@ -44,12 +49,17 @@ function Characters() {
   };
 
   // Handle character delete
-  const handleDeleteCharacter = (character: PC | NPC, type: 'pc' | 'npc') => {
+  const handleDeleteCharacter = async (character: PC | NPC, type: 'pc' | 'npc') => {
     if (window.confirm(`Удалить персонажа "${character.name}"?`)) {
-      if (type === 'pc') {
-        deletePc(character.id);
-      } else {
-        deleteNpc(character.id);
+      try {
+        if (type === 'pc') {
+          await deletePc(character.id);
+        } else {
+          await deleteNpc(character.id);
+        }
+      } catch (error) {
+        alert('Ошибка при удалении персонажа. Попробуйте снова.');
+        console.warn('Failed to delete character:', error);
       }
     }
   };

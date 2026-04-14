@@ -47,14 +47,14 @@ function Layout() {
     switch (currentScreen) {
       case 'dashboard':
         return <Dashboard />
-      case 'characters':
+       case 'characters':
         return <Characters />
       case 'twists':
         return <Twists onNavigateToCharacter={handleNavigateToCharacter} />
       case 'sessions':
         return <Sessions />
       default:
-        return <Dashboard />
+        return <Dashboard /> 
     }
   }
 
@@ -67,7 +67,7 @@ function Layout() {
             <h1 className="text-2xl font-bold">🐉 DM Tracker</h1>
           </div>
 
-          {/* Search bar */}
+        {/* Search bar */}
           <div className="hidden md:flex flex-1 max-w-md">
             <SearchBar onResultSelect={handleSearchResult} />
           </div>
