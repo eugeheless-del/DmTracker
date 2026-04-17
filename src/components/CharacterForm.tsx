@@ -151,55 +151,32 @@ export function CharacterForm({ type, character, onSubmit, onClose }: CharacterF
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-300 mb-1">
-                      Мировоззрение
+                      Класс Доспеха (AC)
                     </label>
-                    <select
-                      name="alignment"
-                      value={formData.alignment || ''}
+                    <input
+                      type="number"
+                      name="ac"
+                      value={formData.ac || ''}
                       onChange={handleChange}
+                      placeholder="10"
+                      min="0"
                       className="w-full px-3 py-2 bg-slate-800 text-white rounded border border-slate-700 focus:outline-none focus:border-blue-500 transition-colors"
-                    >
-                      <option value="">Выберите</option>
-                      <option value="lawful_good">Справедливо-добрый</option>
-                      <option value="neutral_good">Нейтрально-добрый</option>
-                      <option value="chaotic_good">Хаотично-добрый</option>
-                      <option value="lawful_neutral">Справедливо-нейтральный</option>
-                      <option value="true_neutral">Истинно нейтральный</option>
-                      <option value="chaotic_neutral">Хаотично-нейтральный</option>
-                      <option value="lawful_evil">Справедливо-злой</option>
-                      <option value="neutral_evil">Нейтрально-злой</option>
-                      <option value="chaotic_evil">Хаотично-злой</option>
-                    </select>
+                    />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">
-                      HP (текущие)
-                    </label>
-                    <input
-                      type="number"
-                      name="hp"
-                      value={formData.hp || ''}
-                      onChange={handleChange}
-                      placeholder="0"
-                      className="w-full px-3 py-2 bg-slate-800 text-white rounded border border-slate-700 focus:outline-none focus:border-blue-500 transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">
-                      Max HP
-                    </label>
-                    <input
-                      type="number"
-                      name="maxHp"
-                      value={formData.maxHp || ''}
-                      onChange={handleChange}
-                      placeholder="10"
-                      className="w-full px-3 py-2 bg-slate-800 text-white rounded border border-slate-700 focus:outline-none focus:border-blue-500 transition-colors"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">
+                    HP (текущие)
+                  </label>
+                  <input
+                    type="number"
+                    name="hp"
+                    value={formData.hp || ''}
+                    onChange={handleChange}
+                    placeholder="0"
+                    className="w-full px-3 py-2 bg-slate-800 text-white rounded border border-slate-700 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
                 </div>
 
                 <div>
@@ -227,8 +204,8 @@ export function CharacterForm({ type, character, onSubmit, onClose }: CharacterF
                   </label>
                   <input
                     type="text"
-                    name="description"
-                    value={formData.description || ''}
+                    name="role"
+                    value={formData.role || ''}
                     onChange={handleChange}
                     placeholder="Кузнец, маг и т.д."
                     className="w-full px-3 py-2 bg-slate-800 text-white rounded border border-slate-700 focus:outline-none focus:border-blue-500 transition-colors"
@@ -265,24 +242,18 @@ export function CharacterForm({ type, character, onSubmit, onClose }: CharacterF
 
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-1">
-                    Мироввоззрение
+                    Статус
                   </label>
                   <select
-                    name="alignment"
-                    value={formData.alignment || ''}
+                    name="status"
+                    value={formData.status || ''}
                     onChange={handleChange}
                     className="w-full px-3 py-2 bg-slate-800 text-white rounded border border-slate-700 focus:outline-none focus:border-blue-500 transition-colors"
                   >
                     <option value="">Выберите</option>
-                    <option value="lawful_good">Справедливо-добрый</option>
-                    <option value="neutral_good">Нейтрально-добрый</option>
-                    <option value="chaotic_good">Хаотично-добрый</option>
-                    <option value="lawful_neutral">Справедливо-нейтральный</option>
-                    <option value="true_neutral">Истинно нейтральный</option>
-                    <option value="chaotic_neutral">Хаотично-нейтральный</option>
-                    <option value="lawful_evil">Справедливо-злой</option>
-                    <option value="neutral_evil">Нейтрально-злой</option>
-                    <option value="chaotic_evil">Хаотично-злой</option>
+                    <option value="alive">Жив</option>
+                    <option value="dead">Мертв</option>
+                    <option value="missing">Пропал</option>
                   </select>
                 </div>
 

@@ -4,7 +4,7 @@ import { TwistInput } from './types';
 import { supabase } from './supabaseClient';
 
 // Utility: get current timestamp
-const now = (): number => Date.now();
+const now = (): string => new Date().toISOString();
 
 // Initial empty state
 const initialState = {
@@ -23,7 +23,7 @@ export const useStore = create<StoreState>((set, get) => {
       try {
         const { error } = await supabase
           .from('npcs')
-          .insert([{ ...data, createdAt: now(), updatedAt: now() }]);
+          .insert([{ ...data, created_at: now(), updated_at: now() }]);
 
         if (error) throw error;
 
@@ -34,6 +34,7 @@ export const useStore = create<StoreState>((set, get) => {
         set({ npcs: npcs as NPC[] });
       } catch (error) {
         console.warn('Failed to add NPC:', error);
+        throw error;
       }
     },
 
@@ -41,7 +42,7 @@ export const useStore = create<StoreState>((set, get) => {
       try {
         const { error } = await supabase
           .from('npcs')
-          .update({ ...data, updatedAt: now() })
+          .update({ ...data, updated_at: now() })
           .eq('id', id);
 
         if (error) throw error;
@@ -53,6 +54,7 @@ export const useStore = create<StoreState>((set, get) => {
         set({ npcs: npcs as NPC[] });
       } catch (error) {
         console.warn('Failed to update NPC:', error);
+        throw error;
       }
     },
 
@@ -75,6 +77,7 @@ export const useStore = create<StoreState>((set, get) => {
         });
       } catch (error) {
         console.warn('Failed to delete NPC:', error);
+        throw error;
       }
     },
 
@@ -85,7 +88,7 @@ export const useStore = create<StoreState>((set, get) => {
       try {
         const { error } = await supabase
           .from('pcs')
-          .insert([{ ...data, createdAt: now(), updatedAt: now() }]);
+          .insert([{ ...data, created_at: now(), updated_at: now() }]);
 
         if (error) throw error;
 
@@ -96,6 +99,7 @@ export const useStore = create<StoreState>((set, get) => {
         set({ pcs: pcs as PC[] });
       } catch (error) {
         console.warn('Failed to add PC:', error);
+        throw error;
       }
     },
 
@@ -103,7 +107,7 @@ export const useStore = create<StoreState>((set, get) => {
       try {
         const { error } = await supabase
           .from('pcs')
-          .update({ ...data, updatedAt: now() })
+          .update({ ...data, updated_at: now() })
           .eq('id', id);
 
         if (error) throw error;
@@ -115,6 +119,7 @@ export const useStore = create<StoreState>((set, get) => {
         set({ pcs: pcs as PC[] });
       } catch (error) {
         console.warn('Failed to update PC:', error);
+        throw error;
       }
     },
 
@@ -137,6 +142,7 @@ export const useStore = create<StoreState>((set, get) => {
         });
       } catch (error) {
         console.warn('Failed to delete PC:', error);
+        throw error;
       }
     },
 
@@ -147,7 +153,7 @@ export const useStore = create<StoreState>((set, get) => {
       try {
         const { error } = await supabase
           .from('twists')
-          .insert([{ ...data, createdAt: now(), updatedAt: now() }]);
+          .insert([{ ...data, created_at: now(), updated_at: now() }]);
 
         if (error) throw error;
 
@@ -158,6 +164,7 @@ export const useStore = create<StoreState>((set, get) => {
         set({ twists: twists as Twist[] });
       } catch (error) {
         console.warn('Failed to add Twist:', error);
+        throw error;
       }
     },
 
@@ -165,7 +172,7 @@ export const useStore = create<StoreState>((set, get) => {
       try {
         const { error } = await supabase
           .from('twists')
-          .update({ ...data, updatedAt: now() })
+          .update({ ...data, updated_at: now() })
           .eq('id', id);
 
         if (error) throw error;
@@ -177,6 +184,7 @@ export const useStore = create<StoreState>((set, get) => {
         set({ twists: twists as Twist[] });
       } catch (error) {
         console.warn('Failed to update Twist:', error);
+        throw error;
       }
     },
 
@@ -199,6 +207,7 @@ export const useStore = create<StoreState>((set, get) => {
         });
       } catch (error) {
         console.warn('Failed to delete Twist:', error);
+        throw error;
       }
     },
 
@@ -209,7 +218,7 @@ export const useStore = create<StoreState>((set, get) => {
       try {
         const { error } = await supabase
           .from('sessions')
-          .insert([{ ...data, createdAt: now(), updatedAt: now() }]);
+          .insert([{ ...data, created_at: now(), updated_at: now() }]);
 
         if (error) throw error;
 
@@ -220,6 +229,7 @@ export const useStore = create<StoreState>((set, get) => {
         set({ sessions: sessions as Session[] });
       } catch (error) {
         console.warn('Failed to add Session:', error);
+        throw error;
       }
     },
 
@@ -227,7 +237,7 @@ export const useStore = create<StoreState>((set, get) => {
       try {
         const { error } = await supabase
           .from('sessions')
-          .update({ ...data, updatedAt: now() })
+          .update({ ...data, updated_at: now() })
           .eq('id', id);
 
         if (error) throw error;
@@ -239,6 +249,7 @@ export const useStore = create<StoreState>((set, get) => {
         set({ sessions: sessions as Session[] });
       } catch (error) {
         console.warn('Failed to update Session:', error);
+        throw error;
       }
     },
 
@@ -256,6 +267,7 @@ export const useStore = create<StoreState>((set, get) => {
         }));
       } catch (error) {
         console.warn('Failed to delete Session:', error);
+        throw error;
       }
     },
 
@@ -343,11 +355,11 @@ export const useStore = create<StoreState>((set, get) => {
             id: npc.id,
             name: npc.name,
             type: 'npc',
-            description: npc.description || npc.location || 'NPC',
+            description: npc.role || npc.location || 'NPC',
             matchedField: 'name',
           });
         } else if (
-          npc.description?.toLowerCase().includes(normalizedQuery) ||
+          npc.role?.toLowerCase().includes(normalizedQuery) ||
           npc.location?.toLowerCase().includes(normalizedQuery) ||
           npc.appearance?.toLowerCase().includes(normalizedQuery)
         ) {
@@ -355,7 +367,7 @@ export const useStore = create<StoreState>((set, get) => {
             id: npc.id,
             name: npc.name,
             type: 'npc',
-            description: npc.description || npc.location || 'NPC',
+            description: npc.role || npc.location || 'NPC',
             matchedField: 'role',
           });
         }
@@ -363,10 +375,10 @@ export const useStore = create<StoreState>((set, get) => {
 
       // Search Twists
       state.twists.forEach((twist) => {
-        if (twist.name.toLowerCase().includes(normalizedQuery)) {
+        if (twist.title.toLowerCase().includes(normalizedQuery)) {
           results.push({
             id: twist.id,
-            name: twist.name,
+            name: twist.title,
             type: 'twist',
             description: twist.type || twist.description,
             matchedField: 'name',
@@ -377,7 +389,7 @@ export const useStore = create<StoreState>((set, get) => {
         ) {
           results.push({
             id: twist.id,
-            name: twist.name,
+            name: twist.title,
             type: 'twist',
             description: twist.type || twist.description,
             matchedField: 'type',

@@ -4,11 +4,7 @@ import { Twist } from '../types';
 import { TwistForm } from '../components/TwistForm';
 import { TwistCard } from '../components/TwistCard';
 
-interface TwistsProps {
-  onNavigateToCharacter?: () => void;
-}
-
-function Twists({ onNavigateToCharacter }: TwistsProps) {
+function Twists() {
   const { twists, addTwist, updateTwist, deleteTwist } = useStore();
   const [showForm, setShowForm] = useState(false);
   const [editingTwist, setEditingTwist] = useState<Twist | undefined>();
@@ -43,7 +39,7 @@ function Twists({ onNavigateToCharacter }: TwistsProps) {
 
   // Handle twist delete
   const handleDeleteTwist = async (twist: Twist) => {
-    if (window.confirm(`Удалить твист "${twist.name}"?`)) {
+    if (window.confirm(`Удалить твист "${twist.title}"?`)) {
       try {
         await deleteTwist(twist.id);
       } catch (error) {
@@ -103,7 +99,6 @@ function Twists({ onNavigateToCharacter }: TwistsProps) {
               onStatusChange={handleStatusChange}
               onEdit={handleEditTwist}
               onDelete={handleDeleteTwist}
-              onCharacterClick={() => onNavigateToCharacter?.()}
             />
           ))}
         </div>

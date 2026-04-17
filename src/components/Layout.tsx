@@ -19,12 +19,6 @@ function Layout() {
     { id: 'sessions', label: 'Сессии', icon: '📅' },
   ] as const
 
-  // Handle navigation to characters with optional selected character
-  const handleNavigateToCharacter = () => {
-    setCurrentScreen('characters')
-    setMobileMenuOpen(false)
-  }
-
   // Handle search result selection - navigate to appropriate page
   const handleSearchResult = (result: SearchResult) => {
     switch (result.type) {
@@ -50,7 +44,7 @@ function Layout() {
        case 'characters':
         return <Characters />
       case 'twists':
-        return <Twists onNavigateToCharacter={handleNavigateToCharacter} />
+        return <Twists />
       case 'sessions':
         return <Sessions />
       default:

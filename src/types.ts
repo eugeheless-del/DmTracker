@@ -2,8 +2,8 @@
 export interface BaseEntity {
   id: string;
   name: string;
-  createdAt: number;
-  updatedAt: number;
+  created_at: string;
+  updated_at: string;
 }
 
 // Search result type
@@ -16,17 +16,17 @@ export interface SearchResult {
 }
 
 // Тип для данных формы при создании/редактировании
-export type TwistInput = Omit<Twist, 'id' | 'createdAt' | 'updatedAt'>;
-export type PCInput = Omit<PC, 'id' | 'createdAt' | 'updatedAt'>;
-export type NPCInput = Omit<NPC, 'id' | 'createdAt' | 'updatedAt'>;
+export type TwistInput = Omit<Twist, 'id' | 'created_at' | 'updated_at'>;
+export type PCInput = Omit<PC, 'id' | 'created_at' | 'updated_at'>;
+export type NPCInput = Omit<NPC, 'id' | 'created_at' | 'updated_at'>;
 
 // Non-Player Character (NPC)
 export interface NPC extends BaseEntity {
-  description?: string;
+  role?: string;
   appearance?: string;
   notes?: string;
-  alignment?: string;
   location?: string;
+  status?: 'alive' | 'dead' | 'missing';
 }
 
 // Player Character (PC)
@@ -36,22 +36,21 @@ export interface PC extends BaseEntity {
   level?: number;
   race?: string;
   hp?: number;
-  maxHp?: number;
-  alignment?: string;
+  ac?: number;
   notes?: string;
 }
 
 // Twist - plot event or complication
-export interface Twist extends BaseEntity {
+export interface Twist {
+  id: string;
+  title: string; // Renamed from 'name'
   description?: string;
-  trigger?: string; // condition that triggers the twist
+  trigger_condition?: string; // Condition that triggers the twist
   type?: 'revelation' | 'enemy' | 'opportunity' | 'obstacle' | 'alliance';
   consequence?: string;
   status?: 'hidden' | 'ready' | 'revealed' | 'completed'; // twist status
-  resolved?: boolean;
-  sessionId?: string;
-  npcIds: string[]; // associated NPC references
-  pcIds: string[]; // associated PC references
+  created_at: string;
+  updated_at: string;
 }
 
 // Gaming Session
@@ -73,26 +72,26 @@ export interface StoreState {
   sessions: Session[];
 
   // NPC actions
-  addNpc: (npc: Omit<NPC, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
-  updateNpc: (id: string, data: Partial<Omit<NPC, 'id' | 'createdAt'>>) => Promise<void>;
+  addNpc: (npc: Omit<NPC, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  updateNpc: (id: string, data: Partial<Omit<NPC, 'id' | 'created_at'>>) => Promise<void>;
   deleteNpc: (id: string) => Promise<void>;
   getNpcById: (id: string) => NPC | undefined;
 
   // PC actions
-  addPc: (pc: Omit<PC, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
-  updatePc: (id: string, data: Partial<Omit<PC, 'id' | 'createdAt'>>) => Promise<void>;
+  addPc: (pc: Omit<PC, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  updatePc: (id: string, data: Partial<Omit<PC, 'id' | 'created_at'>>) => Promise<void>;
   deletePc: (id: string) => Promise<void>;
   getPcById: (id: string) => PC | undefined;
 
   // Twist actions
-  addTwist: (twist: Omit<Twist, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
-  updateTwist: (id: string, data: Partial<Omit<Twist, 'id' | 'createdAt'>>) => Promise<void>;
+  addTwist: (twist: Omit<Twist, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  updateTwist: (id: string, data: Partial<Omit<Twist, 'id' | 'created_at'>>) => Promise<void>;
   deleteTwist: (id: string) => Promise<void>;
   getTwistById: (id: string) => Twist | undefined;
 
   // Session actions
-  addSession: (session: Omit<Session, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
-  updateSession: (id: string, data: Partial<Omit<Session, 'id' | 'createdAt'>>) => Promise<void>;
+  addSession: (session: Omit<Session, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  updateSession: (id: string, data: Partial<Omit<Session, 'id' | 'created_at'>>) => Promise<void>;
   deleteSession: (id: string) => Promise<void>;
   getSessionById: (id: string) => Session | undefined;
 

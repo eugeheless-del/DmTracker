@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Twist } from '../types';
-import { useStore } from '../store';
 
 interface TwistFormProps {
   // Редактируемый твист (undefined при создании нового)
@@ -21,21 +20,17 @@ const twistTypeLabels: Record<string, string> = {
 };
 
 export function TwistForm({ twist, onSubmit, onClose }: TwistFormProps) {
-  const { pcs, npcs } = useStore();
-  
   // Initialize form data
   const [formData, setFormData] = useState<any>(
     twist
       ? { ...twist }
       : {
-          name: '',
+          title: '',
           description: '',
-          trigger: '',
+          trigger_condition: '',
           type: 'revelation',
           consequence: '',
           status: 'hidden',
-          pcIds: [],
-          npcIds: [],
         }
   );
 
@@ -53,27 +48,11 @@ export function TwistForm({ twist, onSubmit, onClose }: TwistFormProps) {
     }
   };
 
-  // Handle PC selection (single or multiple)
-  const togglePcSelection = (pcId: string) => {
-    const newPcIds = formData.pcIds.includes(pcId)
-      ? formData.pcIds.filter((id: string) => id !== pcId)
-      : [...formData.pcIds, pcId];
-    setFormData({ ...formData, pcIds: newPcIds });
-  };
-
-  // Handle NPC selection (single or multiple)
-  const toggleNpcSelection = (npcId: string) => {
-    const newNpcIds = formData.npcIds.includes(npcId)
-      ? formData.npcIds.filter((id: string) => id !== npcId)
-      : [...formData.npcIds, npcId];
-    setFormData({ ...formData, npcIds: newNpcIds });
-  };
-
   // Validate form
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
-    if (!formData.name || formData.name.trim() === '') {
-      newErrors.name = 'Имя твиста обязательно';
+    if (!formData.title || formData.title.trim() === '') {
+      newErrors.title = 'Имя твиста обязательно';
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -108,22 +87,22 @@ export function TwistForm({ twist, onSubmit, onClose }: TwistFormProps) {
           </h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* NAME */}
+            {/* TITLE */}
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-1">
                 Имя твиста *
               </label>
               <input
                 type="text"
-                name="name"
-                value={formData.name || ''}
+                name="title"
+                value={formData.title || ''}
                 onChange={handleChange}
                 placeholder="Например: Появление врага"
                 className={`w-full px-3 py-2 bg-slate-800 text-white rounded border ${
-                  errors.name ? 'border-red-500' : 'border-slate-700'
+                  errors.title ? 'border-red-500' : 'border-slate-700'
                 } focus:outline-none focus:border-blue-500 transition-colors`}
               />
-              {errors.name && <p className="text-red-400 text-xs mt-1">{errors.name}</p>}
+              {errors.title && <p className="text-red-400 text-xs mt-1">{errors.title}</p>}
             </div>
 
             {/* TYPE */}
@@ -160,15 +139,15 @@ export function TwistForm({ twist, onSubmit, onClose }: TwistFormProps) {
               />
             </div>
 
-            {/* TRIGGER */}
+            {/* TRIGGER_CONDITION */}
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-1">
                 Триггер (условие)
               </label>
               <input
                 type="text"
-                name="trigger"
-                value={formData.trigger || ''}
+                name="trigger_condition"
+                value={formData.trigger_condition || ''}
                 onChange={handleChange}
                 placeholder="Когда произойдёт этот твист?"
                 className="w-full px-3 py-2 bg-slate-800 text-white rounded border border-slate-700 focus:outline-none focus:border-blue-500 transition-colors"
@@ -207,57 +186,6 @@ export function TwistForm({ twist, onSubmit, onClose }: TwistFormProps) {
                 <option value="completed">Завершён</option>
               </select>
             </div>
-
-            {/* PC SELECTION */}
-            {pcs.length > 0 && (
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  ПЛ (Персонажи Игроков)
-                </label>
-                <div className="space-y-2">
-                  {pcs.map((pc) => (
-                    <label key={pc.id} className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={formData.pcIds.includes(pc.id)}
-                        onChange={() => togglePcSelection(pc.id)}
-                        className="w-4 h-4 rounded border-slate-600 bg-slate-800"
-                      />
-                      <span className="text-sm text-slate-300">{pc.name}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* NPC SELECTION */}
-            {npcs.length > 0 && (
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  НПЛ (Персонажи без Игроков)
-                </label>
-                <div className="space-y-2">
-                  {npcs.map((npc) => (
-                    <label key={npc.id} className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={formData.npcIds.includes(npc.id)}
-                        onChange={() => toggleNpcSelection(npc.id)}
-                        className="w-4 h-4 rounded border-slate-600 bg-slate-800"
-                      />
-                      <span className="text-sm text-slate-300">{npc.name}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* No characters warning */}
-            {pcs.length === 0 && npcs.length === 0 && (
-              <div className="p-3 bg-slate-800 border border-slate-700 rounded text-sm text-slate-400">
-                💡 Сначала создайте персонажей на вкладке "Персонажи"
-              </div>
-            )}
 
             {/* Submit and Close buttons */}
             <div className="flex gap-2 pt-4">
