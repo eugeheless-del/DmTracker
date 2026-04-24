@@ -71,7 +71,7 @@ export const useStore = create<StoreState>((set, get) => {
           const newNpcs = state.npcs.filter((npc) => npc.id !== id);
           const newSessions = state.sessions.map((session) => ({
             ...session,
-            npcIds: session.npcIds.filter((npcId) => npcId !== id),
+            npc_ids: session.npc_ids.filter((npcId) => npcId !== id),
           }));
           return { npcs: newNpcs, sessions: newSessions };
         });
@@ -136,7 +136,7 @@ export const useStore = create<StoreState>((set, get) => {
           const newPcs = state.pcs.filter((pc) => pc.id !== id);
           const newSessions = state.sessions.map((session) => ({
             ...session,
-            pcIds: session.pcIds.filter((pcId) => pcId !== id),
+            pc_ids: session.pc_ids.filter((pcId) => pcId !== id),
           }));
           return { pcs: newPcs, sessions: newSessions };
         });
@@ -201,7 +201,7 @@ export const useStore = create<StoreState>((set, get) => {
           const newTwists = state.twists.filter((twist) => twist.id !== id);
           const newSessions = state.sessions.map((session) => ({
             ...session,
-            twistIds: session.twistIds.filter((twistId) => twistId !== id),
+            twist_ids: session.twist_ids.filter((twistId) => twistId !== id),
           }));
           return { twists: newTwists, sessions: newSessions };
         });
@@ -330,19 +330,19 @@ export const useStore = create<StoreState>((set, get) => {
             id: pc.id,
             name: pc.name,
             type: 'pc',
-            description: `${pc.class || 'Character'}${pc.playerName ? ` (${pc.playerName})` : ''}`,
+            description: `${pc.class || 'Character'}${pc.player_name ? ` (${pc.player_name})` : ''}`,
             matchedField: 'name',
           });
         } else if (
           pc.class?.toLowerCase().includes(normalizedQuery) ||
           pc.race?.toLowerCase().includes(normalizedQuery) ||
-          pc.playerName?.toLowerCase().includes(normalizedQuery)
+          pc.player_name?.toLowerCase().includes(normalizedQuery)
         ) {
           results.push({
             id: pc.id,
             name: pc.name,
             type: 'pc',
-            description: `${pc.class || 'Character'}${pc.playerName ? ` (${pc.playerName})` : ''}`,
+            description: `${pc.class || 'Character'}${pc.player_name ? ` (${pc.player_name})` : ''}`,
             matchedField: 'role',
           });
         }

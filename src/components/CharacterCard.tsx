@@ -71,8 +71,8 @@ export function CharacterCard({ character, type, onEdit, onDelete }: CharacterCa
       <div className="text-sm text-slate-300 mb-4 space-y-1">
         {type === 'pc' && (
           <>
-            {(character as PC).playerName && (
-              <p>👤 Игрок: <span className="text-slate-100">{(character as PC).playerName}</span></p>
+            {(character as PC).player_name && (
+              <p>👤 Игрок: <span className="text-slate-100">{(character as PC).player_name}</span></p>
             )}
             {(character as PC).ac !== undefined && (
               <p>🛡️ AC: <span className="text-slate-100">{(character as PC).ac}</span></p>

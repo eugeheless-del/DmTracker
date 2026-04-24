@@ -97,8 +97,8 @@ export function CharacterForm({ type, character, onSubmit, onClose }: CharacterF
                   </label>
                   <input
                     type="text"
-                    name="playerName"
-                    value={formData.playerName || ''}
+                    name="player_name"
+                    value={formData.player_name || ''}
                     onChange={handleChange}
                     placeholder="Имя игрока"
                     className="w-full px-3 py-2 bg-slate-800 text-white rounded border border-slate-700 focus:outline-none focus:border-blue-500 transition-colors"

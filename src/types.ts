@@ -31,7 +31,7 @@ export interface NPC extends BaseEntity {
 
 // Player Character (PC)
 export interface PC extends BaseEntity {
-  playerName?: string;
+  player_name?: string;
   class?: string;
   level?: number;
   race?: string;
@@ -55,13 +55,16 @@ export interface Twist {
 
 // Gaming Session
 export interface Session extends BaseEntity {
-  date?: number; // timestamp
+  date?: string; // YYYY-MM-DD format
   description?: string;
-  npcIds: string[]; // references to NPCs
-  pcIds: string[]; // references to PCs
-  twistIds: string[]; // references to Twists
+  npc_ids: string[]; // references to NPCs
+  pc_ids: string[]; // references to PCs (saved as pc_ids in DB)
+  twist_ids: string[]; // references to Twists
   notes?: string;
 }
+
+// Input type for Session creation/editing
+export type SessionInput = Omit<Session, 'id' | 'created_at' | 'updated_at'>;
 
 // Store state
 export interface StoreState {
