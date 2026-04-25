@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { PC, NPC } from '../types';
 import { useStore } from '../store';
+import StatusModal from './StatusModal';
+import { StatusBadges } from './StatusBadges';
 
 interface CharacterCardProps {
   // Персонаж для отображения (PC или NPC)
@@ -11,12 +13,15 @@ interface CharacterCardProps {
   onEdit: (character: PC | NPC) => void;
   // Коллбэк при удалении
   onDelete: (character: PC | NPC) => void;
+  // Коллбэк для открытия инвентаря (только для PC)
+  onInventory?: (pc: PC) => void;
 }
 
-export function CharacterCard({ character, type, onEdit, onDelete }: CharacterCardProps) {
+export function CharacterCard({ character, type, onEdit, onDelete, onInventory }: CharacterCardProps) {
   const { updatePc } = useStore();
   const [hpInput, setHpInput] = useState<string>('');
   const [isEditingHp, setIsEditingHp] = useState(false);
+  const [statusPc, setStatusPc] = useState<PC | undefined>();
 
   // Handle HP edit
   const handleHpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -60,9 +65,13 @@ export function CharacterCard({ character, type, onEdit, onDelete }: CharacterCa
   return (
     <div className="bg-slate-800 rounded-lg shadow-lg p-4 hover:shadow-xl hover:bg-slate-750 transition-all duration-300 border border-slate-700 hover:border-slate-600">
       {/* Заголовок: имя и дополнительная информация */}
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex-1">
-          <h3 className="text-lg font-bold text-white truncate">{character.name}</h3>
+      <div className="flex items-start justify-between mb-3 gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="text-lg font-bold text-white">{character.name}</h3>
+            {/* Status badges for PC */}
+            {type === 'pc' && <StatusBadges statuses={(character as PC).statuses} maxVisible={5} />}
+          </div>
           <p className="text-sm text-slate-400 mt-1">{getRoleText()}</p>
         </div>
       </div>
@@ -123,7 +132,23 @@ export function CharacterCard({ character, type, onEdit, onDelete }: CharacterCa
       </div>
 
       {/* Кнопки действия */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
+        {type === 'pc' && (
+          <>
+            <button
+              onClick={() => onInventory?.(character as PC)}
+              className="flex-1 px-3 py-2 bg-amber-600 hover:bg-amber-500 text-white text-sm font-medium rounded transition-colors min-w-fit"
+            >
+              🎒 Инвентарь
+            </button>
+            <button
+              onClick={() => setStatusPc(character as PC)}
+              className="flex-1 px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium rounded transition-colors min-w-fit"
+            >
+              ✨ Статусы
+            </button>
+          </>
+        )}
         <button
           onClick={() => onEdit(character)}
           className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded transition-colors"
@@ -137,6 +162,11 @@ export function CharacterCard({ character, type, onEdit, onDelete }: CharacterCa
           Удалить
         </button>
       </div>
+      
+      {/* Status Modal */}
+      {statusPc && (
+        <StatusModal pc={statusPc} onClose={() => setStatusPc(undefined)} />
+      )}
     </div>
   );
 }

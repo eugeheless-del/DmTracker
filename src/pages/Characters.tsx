@@ -1,14 +1,18 @@
 import { useState } from 'react';
 import { useStore } from '../store';
-import { PC, NPC } from '../types';
+import { PC, NPC, NPCInput } from '../types';
 import { CharacterForm } from '../components/CharacterForm';
 import { CharacterCard } from '../components/CharacterCard';
+import DrunkInnkeeperModal from '../components/DrunkInnkeeperModal';
+import InventoryModal from '../components/InventoryModal';
 
 function Characters() {
   const { pcs, npcs, addPc, updatePc, deletePc, addNpc, updateNpc, deleteNpc } = useStore();
   const [showForm, setShowForm] = useState(false);
   const [formType, setFormType] = useState<'pc' | 'npc'>('pc');
   const [editingCharacter, setEditingCharacter] = useState<PC | NPC | undefined>();
+  const [drunkInnkeeperOpen, setDrunkInnkeeperOpen] = useState(false);
+  const [inventoryPc, setInventoryPc] = useState<PC | undefined>();
 
   // Handle new character
   const handleNewCharacter = (type: 'pc' | 'npc') => {
@@ -64,6 +68,26 @@ function Characters() {
     }
   };
 
+  // Handle save from Drunk Innkeeper generator
+  const handleSaveFromDrunk = async (npcInput: NPCInput) => {
+    try {
+      await addNpc(npcInput);
+    } catch (error) {
+      console.warn('Failed to add NPC from generator:', error);
+      throw error;
+    }
+  };
+
+  // Handle inventory open
+  const handleInventoryOpen = (pc: PC) => {
+    setInventoryPc(pc);
+  };
+
+  // Handle inventory close
+  const handleInventoryClose = () => {
+    setInventoryPc(undefined);
+  };
+
   const allEmpty = pcs.length === 0 && npcs.length === 0;
 
   return (
@@ -83,6 +107,13 @@ function Characters() {
           >
             + НПЛ
           </button>
+          <button
+            onClick={() => setDrunkInnkeeperOpen(true)}
+            className="px-4 py-2 bg-amber-600 hover:bg-amber-700 rounded-lg font-medium transition-colors text-sm flex items-center gap-2"
+          >
+            <span>🍺</span>
+            Пьяный Трактирщик
+          </button>
         </div>
       </div>
 
@@ -98,6 +129,14 @@ function Characters() {
           }}
         />
       )}
+
+      {/* Drunk Innkeeper modal */}
+      <DrunkInnkeeperModal
+        isOpen={drunkInnkeeperOpen}
+        onClose={() => setDrunkInnkeeperOpen(false)}
+        onSave={handleSaveFromDrunk}
+        showFloatingButton={false}
+      />
 
       {/* Empty state */}
       {allEmpty ? (
@@ -119,6 +158,7 @@ function Characters() {
                     type="pc"
                     onEdit={() => handleEditCharacter(pc, 'pc')}
                     onDelete={() => handleDeleteCharacter(pc, 'pc')}
+                    onInventory={handleInventoryOpen}
                   />
                 ))}
               </div>
@@ -143,6 +183,14 @@ function Characters() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Inventory Modal */}
+      {inventoryPc && (
+        <InventoryModal
+          pc={inventoryPc}
+          onClose={handleInventoryClose}
+        />
       )}
     </div>
   );

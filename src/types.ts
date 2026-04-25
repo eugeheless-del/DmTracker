@@ -29,6 +29,22 @@ export interface NPC extends BaseEntity {
   status?: 'alive' | 'dead' | 'missing';
 }
 
+// Inventory Item for PC
+export interface InventoryItem {
+  id: string;
+  pc_id: string;
+  item_name?: string;
+  quantity?: number;
+  description?: string;
+  created_at?: string;
+}
+
+// Status Effect for PC
+export interface StatusEffect extends BaseEntity {
+  pc_id: string; // Reference to PC
+  description?: string;
+}
+
 // Player Character (PC)
 export interface PC extends BaseEntity {
   player_name?: string;
@@ -38,6 +54,8 @@ export interface PC extends BaseEntity {
   hp?: number;
   ac?: number;
   notes?: string;
+  inventory?: InventoryItem[];
+  statuses?: StatusEffect[];
 }
 
 // Twist - plot event or complication
@@ -66,6 +84,32 @@ export interface Session extends BaseEntity {
 // Input type for Session creation/editing
 export type SessionInput = Omit<Session, 'id' | 'created_at' | 'updated_at'>;
 
+// Quirky NPC - generator for "Пьяный Трактирщик" (The Drunk Innkeeper)
+export interface QuirkyNPC {
+  id: string;
+  name: string;
+  background: string; // former profession
+  physicalQuirk: string; // physical oddity
+  smell: string; // distinctive smell
+  speechPattern: string; // speech peculiarity
+  secretTrade: string; // what they actually trade
+  lyingAbout: string; // what they lie about
+  mood: 'drunk' | 'paranoid' | 'nostalgic' | 'aggressive';
+}
+
+// Template arrays for QuirkyNPC generator
+export interface QuirkTemplate {
+  backgrounds: string[];
+  physicalQuirks: string[];
+  smells: string[];
+  speechPatterns: string[];
+  secretTrades: string[];
+  lies: string[];
+}
+
+// Input type for QuirkyNPC creation/editing
+export type QuirkyNPCInput = Omit<QuirkyNPC, 'id'>;
+
 // Store state
 export interface StoreState {
   // Data
@@ -85,6 +129,15 @@ export interface StoreState {
   updatePc: (id: string, data: Partial<Omit<PC, 'id' | 'created_at'>>) => Promise<void>;
   deletePc: (id: string) => Promise<void>;
   getPcById: (id: string) => PC | undefined;
+
+  // Inventory actions
+  addInventoryItem: (pcId: string, item: Partial<InventoryItem>) => Promise<void>;
+  deleteInventoryItem: (itemId: string) => Promise<void>;
+  loadInventoryForPc: (pcId: string) => Promise<void>;
+
+  // Status Effect actions
+  addStatus: (pcId: string, statusData: Partial<StatusEffect>) => Promise<void>;
+  deleteStatus: (statusId: string) => Promise<void>;
 
   // Twist actions
   addTwist: (twist: Omit<Twist, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;

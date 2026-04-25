@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { StoreState, NPC, PC, Twist, Session, SearchResult } from './types';
+import { StoreState, NPC, PC, Twist, Session, SearchResult, InventoryItem, StatusEffect } from './types';
 import { TwistInput } from './types';
 import { supabase } from './supabaseClient';
 
@@ -148,6 +148,169 @@ export const useStore = create<StoreState>((set, get) => {
 
     getPcById: (id) => get().pcs.find((pc) => pc.id === id),
 
+    // ===== Inventory Methods =====
+    addInventoryItem: async (pcId: string, item: Partial<InventoryItem>) => {
+      try {
+        // Generate ID for new item
+        const itemId = crypto.randomUUID();
+        
+        const { error } = await supabase
+          .from('inventory')
+          .insert([{
+            id: itemId,
+            pc_id: pcId,
+            item_name: item.item_name,
+            quantity: item.quantity || 1,
+            description: item.description,
+            created_at: now(),
+          }]);
+
+        if (error) throw error;
+
+        // Update local state: add item to PC's inventory
+        set((state) => {
+          const newPcs = state.pcs.map((pc) => {
+            if (pc.id === pcId) {
+              const newInventory = [
+                ...(pc.inventory || []),
+                {
+                  id: itemId,
+                  pc_id: pcId,
+                  item_name: item.item_name,
+                  quantity: item.quantity || 1,
+                  description: item.description,
+                  created_at: now(),
+                } as InventoryItem,
+              ];
+              return { ...pc, inventory: newInventory };
+            }
+            return pc;
+          });
+          return { pcs: newPcs };
+        });
+      } catch (error) {
+        console.warn('Failed to add inventory item:', error);
+        throw error;
+      }
+    },
+
+    deleteInventoryItem: async (itemId: string) => {
+      try {
+        const { error } = await supabase
+          .from('inventory')
+          .delete()
+          .eq('id', itemId);
+
+        if (error) throw error;
+
+        // Update local state: remove item from PC's inventory
+        set((state) => {
+          const newPcs = state.pcs.map((pc) => ({
+            ...pc,
+            inventory: (pc.inventory || []).filter((item) => item.id !== itemId),
+          }));
+          return { pcs: newPcs };
+        });
+      } catch (error) {
+        console.warn('Failed to delete inventory item:', error);
+        throw error;
+      }
+    },
+
+    loadInventoryForPc: async (pcId: string) => {
+      try {
+        const { data, error } = await supabase
+          .from('inventory')
+          .select('*')
+          .eq('pc_id', pcId);
+
+        if (error) throw error;
+
+        // Update local state: set PC's inventory
+        set((state) => {
+          const newPcs = state.pcs.map((pc) => {
+            if (pc.id === pcId) {
+              return { ...pc, inventory: (data || []) as InventoryItem[] };
+            }
+            return pc;
+          });
+          return { pcs: newPcs };
+        });
+      } catch (error) {
+        console.warn('Failed to load inventory for PC:', error);
+        throw error;
+      }
+    },
+
+    // ===== Status Effect Methods =====
+    addStatus: async (pcId: string, statusData: Partial<StatusEffect>) => {
+      try {
+        // Generate ID for new status
+        const statusId = crypto.randomUUID();
+
+        const { error } = await supabase
+          .from('status_effects')
+          .insert([{
+            id: statusId,
+            pc_id: pcId,
+            name: statusData.name || 'Новый статус',
+            description: statusData.description,
+            created_at: now(),
+            updated_at: now(),
+          }]);
+
+        if (error) throw error;
+
+        // Update local state: add status to PC's statuses
+        set((state) => {
+          const newPcs = state.pcs.map((pc) => {
+            if (pc.id === pcId) {
+              const newStatuses = [
+                ...(pc.statuses || []),
+                {
+                  id: statusId,
+                  pc_id: pcId,
+                  name: statusData.name || 'Новый статус',
+                  description: statusData.description,
+                  created_at: now(),
+                  updated_at: now(),
+                } as StatusEffect,
+              ];
+              return { ...pc, statuses: newStatuses };
+            }
+            return pc;
+          });
+          return { pcs: newPcs };
+        });
+      } catch (error) {
+        console.warn('Failed to add status effect:', error);
+        throw error;
+      }
+    },
+
+    deleteStatus: async (statusId: string) => {
+      try {
+        const { error } = await supabase
+          .from('status_effects')
+          .delete()
+          .eq('id', statusId);
+
+        if (error) throw error;
+
+        // Update local state: remove status from PC's statuses
+        set((state) => {
+          const newPcs = state.pcs.map((pc) => ({
+            ...pc,
+            statuses: (pc.statuses || []).filter((status) => status.id !== statusId),
+          }));
+          return { pcs: newPcs };
+        });
+      } catch (error) {
+        console.warn('Failed to delete status effect:', error);
+        throw error;
+      }
+    },
+
     // ===== Twist Methods =====
     addTwist: async (data: TwistInput) => {
       try {
@@ -276,20 +439,52 @@ export const useStore = create<StoreState>((set, get) => {
     // ===== Utility Methods =====
     loadFromSupabase: async () => {
       try {
-        const [pcsRes, npcsRes, twistsRes, sessionsRes] = await Promise.all([
+        const [pcsRes, npcsRes, twistsRes, sessionsRes, inventoryRes, statusesRes] = await Promise.all([
           supabase.from('pcs').select('*'),
           supabase.from('npcs').select('*'),
           supabase.from('twists').select('*'),
           supabase.from('sessions').select('*'),
+          supabase.from('inventory').select('*'),
+          supabase.from('status_effects').select('*'),
         ]);
 
         if (pcsRes.error) throw pcsRes.error;
         if (npcsRes.error) throw npcsRes.error;
         if (twistsRes.error) throw twistsRes.error;
         if (sessionsRes.error) throw sessionsRes.error;
+        // Note: inventoryRes.error and statusesRes.error are optional - tables might not exist yet
+
+        // Build inventory map: pc_id -> inventory items
+        const inventoryMap = new Map<string, InventoryItem[]>();
+        if (inventoryRes.data) {
+          (inventoryRes.data as InventoryItem[]).forEach((item) => {
+            if (!inventoryMap.has(item.pc_id)) {
+              inventoryMap.set(item.pc_id, []);
+            }
+            inventoryMap.get(item.pc_id)!.push(item);
+          });
+        }
+
+        // Build status map: pc_id -> status effects
+        const statusMap = new Map<string, StatusEffect[]>();
+        if (statusesRes.data) {
+          (statusesRes.data as StatusEffect[]).forEach((status) => {
+            if (!statusMap.has(status.pc_id)) {
+              statusMap.set(status.pc_id, []);
+            }
+            statusMap.get(status.pc_id)!.push(status);
+          });
+        }
+
+        // Attach inventory and statuses to each PC
+        const pcsWithRelations = (pcsRes.data || []).map((pc: PC) => ({
+          ...pc,
+          inventory: inventoryMap.get(pc.id) || [],
+          statuses: statusMap.get(pc.id) || [],
+        }));
 
         set({
-          pcs: (pcsRes.data || []) as PC[],
+          pcs: pcsWithRelations as PC[],
           npcs: (npcsRes.data || []) as NPC[],
           twists: (twistsRes.data || []) as Twist[],
           sessions: (sessionsRes.data || []) as Session[],
