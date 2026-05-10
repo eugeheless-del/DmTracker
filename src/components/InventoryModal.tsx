@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useStore } from '../store';
 import { PC } from '../types';
 
@@ -12,9 +12,17 @@ interface InventoryModalProps {
  * - Display and add inventory items
  * - Load inventory from Supabase on open
  * - Form stays open after adding item
+ * - Inventory updates instantly when new items are added
  */
-export default function InventoryModal({ pc, onClose }: InventoryModalProps) {
+export default function InventoryModal({ pc: initialPc, onClose }: InventoryModalProps) {
+  // Subscribe to store changes and get fresh PC data
+  const pcs = useStore((state) => state.pcs);
   const { addInventoryItem, deleteInventoryItem, loadInventoryForPc } = useStore();
+  
+  // Get current PC from store to ensure inventory updates are reflected
+  const pc = useMemo(() => pcs.find((p) => p.id === initialPc.id) || initialPc, [pcs, initialPc.id]);
+
+  // Local form state
   const [itemName, setItemName] = useState('');
   const [quantity, setQuantity] = useState<number | ''>(1);
   const [description, setDescription] = useState('');

@@ -56,6 +56,7 @@ export interface PC extends BaseEntity {
   notes?: string;
   inventory?: InventoryItem[];
   statuses?: StatusEffect[];
+  telegram_chat_id: string,
 }
 
 // Twist - plot event or complication

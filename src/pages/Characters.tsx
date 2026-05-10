@@ -99,13 +99,13 @@ function Characters() {
             onClick={() => handleNewCharacter('pc')}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors text-sm"
           >
-            + ПЛ
+            Игрок
           </button>
           <button
             onClick={() => handleNewCharacter('npc')}
             className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg font-medium transition-colors text-sm"
           >
-            + НПЛ
+            НПС
           </button>
           <button
             onClick={() => setDrunkInnkeeperOpen(true)}

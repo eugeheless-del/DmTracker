@@ -70,26 +70,14 @@ export function StatusBadges({ statuses = [], maxVisible = 5 }: StatusBadgesProp
             {getStatusIcon(status.name)}
           </div>
 
-          {/* Tooltip */}
+          {/* Tooltip - ONLY ONE */}
           <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10 pointer-events-none">
-            <div className="bg-slate-900 text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap shadow-lg border border-slate-700">
+            <div className="bg-slate-900 text-white text-xs px-3 py-2 rounded-lg shadow-lg border border-slate-700 whitespace-nowrap">
               <p className="font-bold">{status.name}</p>
               {status.description && (
-                <p className="text-slate-300 max-w-xs break-words">
+                <p className="text-slate-300 text-xs mt-1 max-w-xs break-words">
                   {status.description}
                 </p>
-              )}
-              {/* Tooltip arrow */}
-              <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-2 h-2 bg-slate-900 border-r border-b border-slate-700 rotate-45"></div>
-            </div>
-          </div>
-
-          {/* Fallback for small screens */}
-          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:flex z-10 flex-col items-center">
-            <div className="bg-slate-900 text-white text-xs px-2 py-1 rounded shadow-lg border border-slate-700">
-              {status.name}
-              {status.description && (
-                <div className="text-slate-300 text-xs mt-1">{status.description.substring(0, 50)}...</div>
               )}
             </div>
           </div>

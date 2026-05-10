@@ -13,7 +13,7 @@ function Layout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+    { id: 'dashboard', label: 'Общее', icon: '📊' },
     { id: 'characters', label: 'Персонажи', icon: '🧙' },
     { id: 'twists', label: 'Твисты', icon: '✨' },
     { id: 'sessions', label: 'Сессии', icon: '📅' },

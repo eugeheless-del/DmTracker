@@ -41,17 +41,35 @@ export function CharacterForm({ type, character, onSubmit, onClose }: CharacterF
     return Object.keys(newErrors).length === 0;
   };
 
-  // Обработчик отправки формы
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validate()) return;
-    try {
-      await onSubmit(formData);
-    } catch (error) {
-      alert('Ошибка при сохранении персонажа. Попробуйте снова.');
-      console.warn('Failed to submit character:', error);
-    }
-  };
+  // // Обработчик отправки формы
+  // const handleSubmit = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   if (!validate()) return;
+  //   try {
+  //     await onSubmit(formData);
+  //   } catch (error) {
+  //     alert('Ошибка при сохранении персонажа. Попробуйте снова.');
+  //     console.warn('Failed to submit character:', error);
+  //   }
+  // };
+    // Обработчик отправки формы
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!validate()) return;
+  
+  try {
+    // 🔥 ИСКЛЮЧАЕМ inventory и statuses из данных персонажа
+    // Они сохраняются отдельно через другие таблицы
+    const { inventory, statuses, ...characterData } = formData;
+    
+    // Отправляем только данные персонажа (без инвентаря)
+    await onSubmit(characterData);
+    
+  } catch (error) {
+    alert('Ошибка при сохранении персонажа. Попробуйте снова.');
+    console.warn('Failed to submit character:', error);
+  }
+};
 
   return (
     <>
@@ -103,6 +121,26 @@ export function CharacterForm({ type, character, onSubmit, onClose }: CharacterF
                     placeholder="Имя игрока"
                     className="w-full px-3 py-2 bg-slate-800 text-white rounded border border-slate-700 focus:outline-none focus:border-blue-500 transition-colors"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">
+                    📱 Telegram Chat ID
+                    <span className="text-xs text-slate-400 font-normal ml-1">
+                      (для рассылки сообщений)
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    name="telegram_chat_id"
+                    value={formData.telegram_chat_id || ''}
+                    onChange={handleChange}
+                    placeholder="Например: 123456789"
+                    className="w-full px-3 py-2 bg-slate-800 text-white rounded border border-slate-700 focus:outline-none focus:border-blue-500 transition-colors text-sm"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    💡 Получите ID у бота: напишите /start вашему Telegram боту
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

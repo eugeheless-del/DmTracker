@@ -1,18 +1,31 @@
 import { useState } from 'react';
 import { useStore } from '../store';
+import { formatDate } from '../utils/formatDate';
+import { TelegramBroadcastModal } from '../components/TelegramBroadcastModal';
 
 function Dashboard() {
+  const [showTelegramModal, setShowTelegramModal] = useState(false);
  
-  const { pcs, twists, sessions } = useStore();
-  if (!pcs || !twists || !sessions) {
+  const { pcs, npcs, twists, sessions } = useStore();
+  if (!pcs || !npcs || !twists || !sessions) {
     return <div>Загрузка данных...</div>;
   }
   const [notes, setNotes] = useState(() => {
     const saved = localStorage.getItem('dm_tracker_quick_notes');
     return saved || '';
   });
-   console.log('Рендерится Dashboard! Данные:', {
+  
+  // Debug: Log session dates to check for invalid data
+  console.log('🔍 Dashboard sessions data:', sessions.map(s => ({
+    id: s.id,
+    name: s.name,
+    date: s.date,
+    dateType: typeof s.date,
+  })));
+  
+  console.log('Рендерится Dashboard! Данные:', {
     pcs: pcs.length,
+    npcs: npcs.length,
     twists: twists.length,
     sessions: sessions.length,
   });
@@ -42,22 +55,37 @@ function Dashboard() {
     </div> */}
 
     <div className="space-y-6">
-      <h2 className="text-3xl font-bold">📊 Dashboard</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-3xl font-bold">📊 Общее</h2>
+        <button
+          onClick={() => setShowTelegramModal(true)}
+          className="px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-medium rounded-lg transition-all hover:shadow-lg flex items-center gap-2"
+        >
+          📢 Telegram
+        </button>
+      </div>
 
-      {/* Stats Cards - 2 columns */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Active Twists */}
-        <div className="bg-slate-800 rounded-lg p-6 border border-slate-700 hover:border-slate-600 transition-colors">
-          <div className="text-sm text-slate-400 mb-2">✨ Активные твисты</div>
-          <div className="text-3xl font-bold text-amber-400">{activeTwists.length}</div>
-          <p className="text-xs text-slate-500 mt-2">из {twists.length} всего</p>
-        </div>
-
+      {/* Stats Cards - 3 columns */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Player Characters */}
         <div className="bg-slate-800 rounded-lg p-6 border border-slate-700 hover:border-slate-600 transition-colors">
           <div className="text-sm text-slate-400 mb-2">🧙 Персонажей игроков</div>
           <div className="text-3xl font-bold text-blue-400">{pcs.length}</div>
           <p className="text-xs text-slate-500 mt-2">Игроков в команде</p>
+        </div>
+
+        {/* NPCs */}
+        <div className="bg-slate-800 rounded-lg p-6 border border-slate-700 hover:border-slate-600 transition-colors">
+          <div className="text-sm text-slate-400 mb-2">👹 НПС</div>
+          <div className="text-3xl font-bold text-purple-400">{npcs.length}</div>
+          <p className="text-xs text-slate-500 mt-2">Персонажей мира</p>
+        </div>
+
+        {/* Active Twists */}
+        <div className="bg-slate-800 rounded-lg p-6 border border-slate-700 hover:border-slate-600 transition-colors">
+          <div className="text-sm text-slate-400 mb-2">✨ Активные твисты</div>
+          <div className="text-3xl font-bold text-amber-400">{activeTwists.length}</div>
+          <p className="text-xs text-slate-500 mt-2">из {twists.length} всего</p>
         </div>
       </div>
 
@@ -79,24 +107,84 @@ function Dashboard() {
       {sessions.length > 0 && (
         <div className="bg-slate-800 rounded-lg border border-slate-700 p-6 space-y-4">
           <h3 className="text-lg font-bold text-cyan-400 flex items-center gap-2">
-            <span>📅</span> Сессии и персонажи
+            <span>📅</span> Последние сессии
           </h3>
           <div className="space-y-3 max-h-80 overflow-y-auto">
             {sessions
-              .filter((s) => s.pcIds && s.pcIds.length > 0)
+              .filter((s) => s.pc_ids && s.pc_ids.length > 0)
               .slice(-5)
               .reverse()
               .map((session) => (
                 <div key={session.id} className="bg-slate-700/50 rounded p-3 border-l-2 border-cyan-500">
                   <p className="font-medium text-slate-100 text-sm">{session.name}</p>
                   <div className="text-xs text-slate-300 mt-1">
+                    📅 {formatDate(session.date)}
+                  </div>
+                  <div className="text-xs text-slate-300 mt-1">
                     🧙{' '}
-                    {session.pcIds
+                    {session.pc_ids
                       .map((pcId) => pcs.find((pc) => pc.id === pcId))
                       .filter((pc): pc is typeof pcs[0] => Boolean(pc))
-                      .map((pc) => `${pc.name}${pc.playerName ? ` (${pc.playerName})` : ''}`)
-                      .join(', ')}
+                      .map((pc) => `${pc.name}${pc.player_name ? ` (${pc.player_name})` : ''}`)
+                      .join(', ') || 'Нет персонажей'}
                   </div>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+
+      {/* Player Characters List */}
+      {pcs.length > 0 && (
+        <div className="bg-slate-800 rounded-lg border border-slate-700 p-6 space-y-4">
+          <h3 className="text-lg font-bold text-blue-400 flex items-center gap-2">
+            <span>🧙</span> Персонажи игроков (первые 5)
+          </h3>
+          <div className="space-y-3 max-h-80 overflow-y-auto">
+            {pcs
+              .slice(-5)
+              .reverse()
+              .map((pc) => (
+                <div key={pc.id} className="bg-slate-700/50 rounded p-3 border-l-2 border-blue-500">
+                  <p className="font-medium text-slate-100 text-sm">{pc.name}</p>
+                  {pc.player_name && (
+                    <div className="text-xs text-slate-300 mt-1">
+                      👤 Игрок: {pc.player_name}
+                    </div>
+                  )}
+                  <div className="text-xs text-slate-300 mt-1">
+                    {pc.class && <span>{pc.class}</span>}
+                    {pc.level && <span> • Уровень {pc.level}</span>}
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+
+      {/* NPCs List */}
+      {npcs.length > 0 && (
+        <div className="bg-slate-800 rounded-lg border border-slate-700 p-6 space-y-4">
+          <h3 className="text-lg font-bold text-purple-400 flex items-center gap-2">
+            <span>👹</span> НПС (первые 5)
+          </h3>
+          <div className="space-y-3 max-h-80 overflow-y-auto">
+            {npcs
+              .slice(-5)
+              .reverse()
+              .map((npc) => (
+                <div key={npc.id} className="bg-slate-700/50 rounded p-3 border-l-2 border-purple-500">
+                  <p className="font-medium text-slate-100 text-sm">{npc.name}</p>
+                  {npc.role && (
+                    <div className="text-xs text-slate-300 mt-1">
+                      👑 {npc.role}
+                    </div>
+                  )}
+                  {npc.status && (
+                    <div className="text-xs text-slate-300 mt-1">
+                      ⚔️ Статус: {npc.status}
+                    </div>
+                  )}
                 </div>
               ))}
           </div>
@@ -113,7 +201,14 @@ function Dashboard() {
         </div>
       )}
     </div>
-    </div>
+
+    {/* Telegram Broadcast Modal */}
+    <TelegramBroadcastModal
+      isOpen={showTelegramModal}
+      onClose={() => setShowTelegramModal(false)}
+      characters={pcs}
+    />
+  </div>
   );
 }
 
