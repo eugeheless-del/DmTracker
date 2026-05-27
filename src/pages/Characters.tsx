@@ -91,25 +91,25 @@ function Characters() {
   const allEmpty = pcs.length === 0 && npcs.length === 0;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h2 className="text-3xl font-bold">🧙 Персонажи</h2>
-        <div className="flex gap-2">
+    <div className="section space-y-6">
+      <div className="flex-between gap-sm flex-wrap">
+        <h2 className="h2">🧙 Персонажи</h2>
+        <div className="flex gap-sm">
           <button
             onClick={() => handleNewCharacter('pc')}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors text-sm"
+            className="btn btn--primary"
           >
             Игрок
           </button>
           <button
             onClick={() => handleNewCharacter('npc')}
-            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg font-medium transition-colors text-sm"
+            className="btn btn--secondary"
           >
             НПС
           </button>
           <button
             onClick={() => setDrunkInnkeeperOpen(true)}
-            className="px-4 py-2 bg-amber-600 hover:bg-amber-700 rounded-lg font-medium transition-colors text-sm flex items-center gap-2"
+            className="btn btn--accent"
           >
             <span>🍺</span>
             Пьяный Трактирщик
@@ -140,17 +140,17 @@ function Characters() {
 
       {/* Empty state */}
       {allEmpty ? (
-        <div className="bg-slate-800 rounded-lg p-8 border border-slate-700 text-center text-slate-400">
-          <p className="text-lg mb-2">Пока нет персонажей</p>
-          <p className="text-sm">Нажмите кнопку выше, чтобы добавить первого</p>
+        <div className="card card--bordered text-center">
+          <p className="h3 mb-2 text-muted">Пока нет персонажей</p>
+          <p className="small text-muted">Нажмите кнопку выше, чтобы добавить первого</p>
         </div>
       ) : (
         <div className="space-y-8">
           {/* Player Characters (ПЛ) */}
           {pcs.length > 0 && (
             <div>
-              <h3 className="text-xl font-bold mb-4 text-blue-400">ПЛ (Персонажи Игроков)</h3>
-              <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+              <h3 className="h3 text-primary mb-4">ПЛ (Персонажи Игроков)</h3>
+              <div className="grid gap-lg grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                 {pcs.map((pc) => (
                   <CharacterCard
                     key={pc.id}
@@ -168,8 +168,8 @@ function Characters() {
           {/* Non-Player Characters (НПЛ) */}
           {npcs.length > 0 && (
             <div>
-              <h3 className="text-xl font-bold mb-4 text-purple-400">НПЛ (Персонажи без Игроков)</h3>
-              <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+              <h3 className="h3 text-purple mb-4">НПЛ (Персонажи без Игроков)</h3>
+              <div className="grid gap-lg grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                 {npcs.map((npc) => (
                   <CharacterCard
                     key={npc.id}

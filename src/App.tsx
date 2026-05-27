@@ -1,11 +1,16 @@
 import { useEffect } from 'react'
 import Layout from './components/Layout'
 import { useStore } from './store'
+import { useStatusNotifications } from './utils/useStatusNotifications'
 
 function App() {
   useEffect(() => {
     useStore.getState().loadFromSupabase()
   }, [])
+
+  // Включаем фоновую систему уведомлений
+  useStatusNotifications()
+
   console.log('Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
 console.log('Supabase Key:', import.meta.env.VITE_SUPABASE_ANON_KEY?.substring(0, 10) + '...');
 

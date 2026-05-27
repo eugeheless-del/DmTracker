@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useStore } from '../store';
 import { PC } from '../types';
 
@@ -17,7 +17,7 @@ export default function StatusModal({ pc, onClose }: StatusModalProps) {
   const { addStatus, deleteStatus } = useStore();
   const [statusName, setStatusName] = useState('');
   const [statusDescription, setStatusDescription] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading] = useState(false);
 
   // Handle add status
   const handleAddStatus = async (e: React.FormEvent) => {

@@ -255,6 +255,7 @@ export const useStore = create<StoreState>((set, get) => {
             pc_id: pcId,
             name: statusData.name || 'Новый статус',
             description: statusData.description,
+            is_active: statusData.is_active !== undefined ? statusData.is_active : true,
             created_at: now(),
             updated_at: now(),
           }]);
@@ -272,6 +273,7 @@ export const useStore = create<StoreState>((set, get) => {
                   pc_id: pcId,
                   name: statusData.name || 'Новый статус',
                   description: statusData.description,
+                  is_active: statusData.is_active !== undefined ? statusData.is_active : true,
                   created_at: now(),
                   updated_at: now(),
                 } as StatusEffect,

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Session, PC } from '../types';
 import ReactMarkdown from 'react-markdown';
-import { SSOResponse } from '@supabase/supabase-js';
 
 interface SessionFormProps {
   // Editing session (undefined when creating new)

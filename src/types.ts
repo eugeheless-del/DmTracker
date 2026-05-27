@@ -43,6 +43,7 @@ export interface InventoryItem {
 export interface StatusEffect extends BaseEntity {
   pc_id: string; // Reference to PC
   description?: string;
+  is_active?: boolean; // Whether the status is currently active
 }
 
 // Player Character (PC)

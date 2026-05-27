@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { PC } from '../types';
 import {
-  sendTelegramBroadcast,
   generateBroadcastReport,
 } from '../utils/telegram';
 
@@ -26,7 +25,8 @@ export function TelegramBroadcastModal({
   characters,
 }: TelegramBroadcastModalProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [message, setMessage] = useState('');
+  const [templateMessage, setTemplateMessage] = useState('');
+  const [personalizedMessages, setPersonalizedMessages] = useState<Record<string, string>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [sendingState, setSendingState] = useState<SendingState>('idle');
   const [progress, setProgress] = useState({ sent: 0, total: 0, current: '' });
@@ -52,6 +52,27 @@ export function TelegramBroadcastModal({
     setSelectedIds(newSet);
   };
 
+  // Update personalized message for a character
+  const updatePersonalizedMessage = (characterId: string, text: string) => {
+    setPersonalizedMessages((prev) => ({
+      ...prev,
+      [characterId]: text,
+    }));
+  };
+
+  // Apply template to all selected characters
+  const applyTemplateToAll = () => {
+    if (!templateMessage.trim()) return;
+    const newMessages: Record<string, string> = {};
+    selectedIds.forEach((id) => {
+      newMessages[id] = templateMessage;
+    });
+    setPersonalizedMessages((prev) => ({
+      ...prev,
+      ...newMessages,
+    }));
+  };
+
   // Select/deselect all
   const toggleSelectAll = () => {
     if (selectedIds.size === filteredCharacters.length) {
@@ -61,9 +82,9 @@ export function TelegramBroadcastModal({
     }
   };
 
-  // Send to selected
+  // Send to selected with personalized messages
   const handleSendSelected = async () => {
-    if (selectedIds.size === 0 || !message.trim()) return;
+    if (selectedIds.size === 0) return;
 
     const recipientsIds = Array.from(selectedIds);
     const recipients = characters
@@ -72,19 +93,21 @@ export function TelegramBroadcastModal({
         id: c.id,
         chatId: c.telegram_chat_id,
         name: c.name,
-      }));
+        message: personalizedMessages[c.id] || '',
+      }))
+      .filter((r) => r.message.trim());
 
     if (recipients.length === 0) {
-      alert('Нет персонажей с действительным Telegram chat ID');
+      alert('Выберите персонажей и введите сообщения');
       return;
     }
 
-    await performBroadcast(recipients);
+    await performBroadcastPersonalized(recipients);
   };
 
-  // Send to all
+  // Send to all using template
   const handleSendAll = async () => {
-    if (!message.trim()) return;
+    if (!templateMessage.trim()) return;
 
     const recipients = characters
       .filter((c) => c.telegram_chat_id)
@@ -92,6 +115,7 @@ export function TelegramBroadcastModal({
         id: c.id,
         chatId: c.telegram_chat_id,
         name: c.name,
+        message: templateMessage,
       }));
 
     if (recipients.length === 0) {
@@ -99,24 +123,66 @@ export function TelegramBroadcastModal({
       return;
     }
 
-    await performBroadcast(recipients);
+    await performBroadcastPersonalized(recipients);
   };
 
-  // Perform the actual broadcast
-  const performBroadcast = async (
-    recipients: Array<{ id: string; chatId: string; name: string }>
+  // Perform personalized broadcast
+  const performBroadcastPersonalized = async (
+    recipients: Array<{ id: string; chatId: string; name: string; message: string }>
   ) => {
     setSendingState('sending');
     setResults([]);
 
-    const broadcastResults = await sendTelegramBroadcast(
-      recipients,
-      message,
-      (sent, total, current) => {
-        setProgress({ sent, total, current });
-      }
-    );
+    // Send each message individually
+    const broadcastResults: BroadcastResult[] = [];
+    let sent = 0;
 
+    for (const recipient of recipients) {
+      setProgress({ sent, total: recipients.length, current: recipient.name });
+      
+      try {
+        // Import sendTelegramMessage from telegram utils
+        const response = await fetch(
+          `https://api.telegram.org/bot${import.meta.env.VITE_TELEGRAM_BOT_TOKEN}/sendMessage`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: recipient.chatId,
+              text: recipient.message,
+              parse_mode: 'Markdown',
+            }),
+          }
+        );
+
+        if (response.ok) {
+          broadcastResults.push({
+            id: recipient.id,
+            name: recipient.name,
+            success: true,
+          });
+        } else {
+          const error = await response.json();
+          broadcastResults.push({
+            id: recipient.id,
+            name: recipient.name,
+            success: false,
+            error: error.description || 'Unknown error',
+          });
+        }
+      } catch (error) {
+        broadcastResults.push({
+          id: recipient.id,
+          name: recipient.name,
+          success: false,
+          error: error instanceof Error ? error.message : 'Network error',
+        });
+      }
+
+      sent++;
+    }
+
+    setProgress({ sent: recipients.length, total: recipients.length, current: '' });
     setResults(broadcastResults);
     setSendingState('sent');
   };
@@ -124,7 +190,8 @@ export function TelegramBroadcastModal({
   // Close modal and reset
   const handleClose = () => {
     setSelectedIds(new Set());
-    setMessage('');
+    setTemplateMessage('');
+    setPersonalizedMessages({});
     setSearchTerm('');
     setSendingState('idle');
     setProgress({ sent: 0, total: 0, current: '' });
@@ -225,32 +292,84 @@ export function TelegramBroadcastModal({
                 </div>
               </div>
 
-              {/* Message Input */}
+              {/* Template Message */}
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">
-                  💬 Сообщение ({message.length} символов)
+                  📝 Общий шаблон сообщения ({templateMessage.length} символов)
                 </label>
                 <textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Введите текст сообщения... Поддерживается Markdown: *жирный*, _курсив_, `код`"
+                  value={templateMessage}
+                  onChange={(e) => setTemplateMessage(e.target.value)}
+                  placeholder="Введите текст шаблона для быстрой рассылки всем... Поддерживается Markdown: *жирный*, _курсив_, `код`"
                   maxLength={4096}
                   className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors resize-none"
-                  rows={5}
+                  rows={3}
                 />
                 <p className="text-xs text-slate-500 mt-2">
-                  ℹ️ Максимум 4096 символов
+                  ℹ️ Используйте "Применить ко всем" для копирования в индивидуальные поля
                 </p>
               </div>
 
-              {/* Message Preview */}
-              {message.trim() && (
+              {/* Personalized Messages */}
+              {selectedIds.size > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="block text-sm font-medium text-slate-300">
+                      💬 Персонализированные сообщения
+                    </label>
+                    <button
+                      onClick={applyTemplateToAll}
+                      disabled={!templateMessage.trim()}
+                      className="text-xs px-3 py-1 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:text-slate-600 text-slate-200 rounded transition-colors"
+                    >
+                      📋 Применить ко всем
+                    </button>
+                  </div>
+
+                  <div className="bg-slate-800 border border-slate-700 rounded p-4 space-y-4 max-h-96 overflow-y-auto">
+                    {filteredCharacters
+                      .filter((char) => selectedIds.has(char.id) && char.telegram_chat_id)
+                      .map((char) => (
+                        <div key={char.id} className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-slate-300">
+                              {char.name}
+                            </span>
+                            {char.player_name && (
+                              <span className="text-xs text-slate-500">
+                                ({char.player_name})
+                              </span>
+                            )}
+                            {personalizedMessages[char.id]?.length > 0 && (
+                              <span className="text-xs text-green-400 ml-auto">
+                                ✓ {personalizedMessages[char.id].length} символов
+                              </span>
+                            )}
+                          </div>
+                          <textarea
+                            value={personalizedMessages[char.id] || ''}
+                            onChange={(e) =>
+                              updatePersonalizedMessage(char.id, e.target.value)
+                            }
+                            placeholder={`Сообщение для ${char.name}...`}
+                            maxLength={4096}
+                            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors resize-none text-sm"
+                            rows={3}
+                          />
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Template Preview */}
+              {templateMessage.trim() && (
                 <div className="bg-slate-800/50 border border-slate-700 rounded p-4">
                   <p className="text-xs font-medium text-slate-400 mb-2">
-                    👁️ Предпросмотр:
+                    👁️ Предпросмотр шаблона:
                   </p>
                   <p className="text-sm text-slate-200 whitespace-pre-wrap break-words">
-                    {message}
+                    {templateMessage}
                   </p>
                 </div>
               )}
@@ -259,14 +378,14 @@ export function TelegramBroadcastModal({
               <div className="flex gap-3 pt-4">
                 <button
                   onClick={handleSendSelected}
-                  disabled={selectedIds.size === 0 || !message.trim()}
+                  disabled={selectedIds.size === 0 || !Array.from(selectedIds).some(id => personalizedMessages[id]?.trim())}
                   className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 disabled:text-slate-500 text-white font-medium rounded transition-colors"
                 >
                   ✉️ Отправить выбранным ({selectedIds.size})
                 </button>
                 <button
                   onClick={handleSendAll}
-                  disabled={!message.trim() || characters.filter(c => c.telegram_chat_id).length === 0}
+                  disabled={!templateMessage.trim() || characters.filter(c => c.telegram_chat_id).length === 0}
                   className="flex-1 px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-slate-700 disabled:text-slate-500 text-white font-medium rounded transition-colors"
                 >
                   📢 Отправить ВСЕМ ({characters.filter(c => c.telegram_chat_id).length})
@@ -335,6 +454,7 @@ export function TelegramBroadcastModal({
                   onClick={() => {
                     setSendingState('idle');
                     setResults([]);
+                    setPersonalizedMessages({});
                   }}
                   className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded transition-colors"
                 >

@@ -60,12 +60,12 @@ function Twists() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold">✨ Твисты</h2>
+    <div className="section space-y-6">
+      <div className="flex-between gap-sm">
+        <h2 className="h2">✨ Твисты</h2>
         <button
           onClick={handleNewTwist}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
+          className="btn btn--primary"
         >
           + Новый твист
         </button>
@@ -85,13 +85,13 @@ function Twists() {
 
       {/* Empty state */}
       {twists.length === 0 ? (
-        <div className="bg-slate-800 rounded-lg p-8 border border-slate-700 text-center text-slate-400">
-          <p className="text-lg mb-2">Пока нет твистов</p>
-          <p className="text-sm">Нажмите кнопку выше, чтобы добавить первый</p>
+        <div className="card card--bordered text-center">
+          <p className="h3 mb-2 text-muted">Пока нет твистов</p>
+          <p className="small text-muted">Нажмите кнопку выше, чтобы добавить первый</p>
         </div>
       ) : (
         // List of twists
-        <div className="grid gap-6">
+        <div className="grid gap-lg">
           {twists.map((twist) => (
             <TwistCard
               key={twist.id}
