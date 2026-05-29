@@ -62,7 +62,7 @@ export function StatusBadges({ statuses = [], maxVisible = 5 }: StatusBadgesProp
   const hiddenCount = Math.max(0, statuses.length - maxVisible);
 
   return (
-    <div className="flex flex-wrap gap-1.5 items-center">
+    <div className="status-badges flex flex-wrap gap-1.5 items-center">
       {visibleStatuses.map((status, index) => (
         <div key={status.id} className="relative group">
           {/* Status Badge */}

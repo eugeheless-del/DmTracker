@@ -213,8 +213,7 @@ function Dashboard() {
               {pcs.length > 0 && (
                 <>
                   <h4 className="h3 text-primary mb-3">ПЛ (Персонажи Игроков)</h4>
-                  <div className="char-grid-wrapper">
-                    <div className="grid-container" style={{ marginBottom: 32 }}>
+                  <div className="char-grid-wrapper" style={{ marginBottom: 32 }}>
                       {pcs.map((pc) => (
                         <CharacterCard
                           key={pc.id}
@@ -225,7 +224,6 @@ function Dashboard() {
                           onInventory={handleInventoryOpen}
                         />
                       ))}
-                    </div>
                   </div>
                 </>
               )}
@@ -233,7 +231,6 @@ function Dashboard() {
                 <>
                   <h4 className="h3 text-purple mb-3">НПЛ (Персонажи без Игроков)</h4>
                   <div className="char-grid-wrapper">
-                    <div className="grid-container">
                       {npcs.map((npc) => (
                         <CharacterCard
                           key={npc.id}
@@ -243,7 +240,6 @@ function Dashboard() {
                           onDelete={() => handleDeleteCharacter(npc, 'npc')}
                         />
                       ))}
-                    </div>
                   </div>
                 </>
               )}
