@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { Session } from '@supabase/supabase-js'
 import Dashboard from '../pages/Dashboard'
 import Characters from '../pages/Characters'
 import Twists from '../pages/Twists'
@@ -8,7 +9,12 @@ import { SearchResult } from '../types'
 
 type Screen = 'dashboard' | 'characters' | 'twists' | 'sessions'
 
-function Layout() {
+type LayoutProps = {
+  session: Session
+  onSignOut: () => Promise<void>
+}
+
+function Layout({ session, onSignOut }: LayoutProps) {
   const [currentScreen, setCurrentScreen] = useState<Screen>('dashboard')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
@@ -58,12 +64,24 @@ function Layout() {
       <header className="bg-slate-900 border-b border-slate-800 px-4 py-4 sticky top-0 z-40">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 flex-1">
-            <h1 className="text-2xl font-bold">🐉 DM Tracker</h1>
+            <div>
+              <h1 className="text-2xl font-bold">🐉 DM Tracker</h1>
+              <p className="text-sm text-slate-400">{session.user.email}</p>
+            </div>
           </div>
 
-        {/* Search bar */}
+          {/* Search bar */}
           <div className="hidden md:flex flex-1 max-w-md">
             <SearchBar onResultSelect={handleSearchResult} />
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onSignOut}
+              className="rounded-full bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-slate-700"
+            >
+              Выйти
+            </button>
           </div>
 
           {/* Mobile menu toggle */}

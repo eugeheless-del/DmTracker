@@ -6,6 +6,18 @@ import { supabase } from './supabaseClient';
 // Utility: get current timestamp
 const now = (): string => new Date().toISOString();
 
+const getCurrentUser = async () => {
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error) throw error;
+  if (!user) throw new Error('User not authenticated');
+
+  return user;
+};
+
 // Initial empty state
 const initialState = {
   npcs: [] as NPC[],
@@ -21,9 +33,11 @@ export const useStore = create<StoreState>((set, get) => {
     // ===== NPC Methods =====
     addNpc: async (data) => {
       try {
+        const user = await getCurrentUser();
+
         const { error } = await supabase
           .from('npcs')
-          .insert([{ ...data, created_at: now(), updated_at: now() }]);
+          .insert([{ ...data, user_id: user.id, created_at: now(), updated_at: now() }]);
 
         if (error) throw error;
 
@@ -86,9 +100,11 @@ export const useStore = create<StoreState>((set, get) => {
     // ===== PC Methods =====
     addPc: async (data) => {
       try {
+        const user = await getCurrentUser();
+
         const { error } = await supabase
           .from('pcs')
-          .insert([{ ...data, created_at: now(), updated_at: now() }]);
+          .insert([{ ...data, user_id: user.id, created_at: now(), updated_at: now() }]);
 
         if (error) throw error;
 
@@ -151,6 +167,8 @@ export const useStore = create<StoreState>((set, get) => {
     // ===== Inventory Methods =====
     addInventoryItem: async (pcId: string, item: Partial<InventoryItem>) => {
       try {
+        const user = await getCurrentUser();
+
         // Generate ID for new item
         const itemId = crypto.randomUUID();
         
@@ -158,6 +176,7 @@ export const useStore = create<StoreState>((set, get) => {
           .from('inventory')
           .insert([{
             id: itemId,
+            user_id: user.id,
             pc_id: pcId,
             item_name: item.item_name,
             quantity: item.quantity || 1,
@@ -245,6 +264,8 @@ export const useStore = create<StoreState>((set, get) => {
     // ===== Status Effect Methods =====
     addStatus: async (pcId: string, statusData: Partial<StatusEffect>) => {
       try {
+        const user = await getCurrentUser();
+
         // Generate ID for new status
         const statusId = crypto.randomUUID();
 
@@ -252,6 +273,7 @@ export const useStore = create<StoreState>((set, get) => {
           .from('status_effects')
           .insert([{
             id: statusId,
+            user_id: user.id,
             pc_id: pcId,
             name: statusData.name || 'Новый статус',
             description: statusData.description,
@@ -316,9 +338,11 @@ export const useStore = create<StoreState>((set, get) => {
     // ===== Twist Methods =====
     addTwist: async (data: TwistInput) => {
       try {
+        const user = await getCurrentUser();
+
         const { error } = await supabase
           .from('twists')
-          .insert([{ ...data, created_at: now(), updated_at: now() }]);
+          .insert([{ ...data, user_id: user.id, created_at: now(), updated_at: now() }]);
 
         if (error) throw error;
 
@@ -381,9 +405,11 @@ export const useStore = create<StoreState>((set, get) => {
     // ===== Session Methods =====
     addSession: async (data) => {
       try {
+        const user = await getCurrentUser();
+
         const { error } = await supabase
           .from('sessions')
-          .insert([{ ...data, created_at: now(), updated_at: now() }]);
+          .insert([{ ...data, user_id: user.id, created_at: now(), updated_at: now() }]);
 
         if (error) throw error;
 
