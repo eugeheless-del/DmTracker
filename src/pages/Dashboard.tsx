@@ -1,15 +1,23 @@
 import { useState } from 'react';
 import { useStore } from '../store';
 import { formatDate } from '../utils/formatDate';
+import { CharacterCard } from '../components/CharacterCard';
+import { CharacterForm } from '../components/CharacterForm';
+import InventoryModal from '../components/InventoryModal';
 import { TelegramBroadcastModal } from '../components/TelegramBroadcastModal';
+import { PC, NPC } from '../types';
 
 type Tab = 'overview' | 'characters' | 'twists' | 'sessions';
 
 function Dashboard() {
   const [showTelegramModal, setShowTelegramModal] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [showForm, setShowForm] = useState(false);
+  const [formType, setFormType] = useState<'pc' | 'npc'>('pc');
+  const [editingCharacter, setEditingCharacter] = useState<PC | NPC | undefined>();
+  const [inventoryPc, setInventoryPc] = useState<PC | undefined>();
  
-  const { pcs, npcs, twists, sessions } = useStore();
+  const { pcs, npcs, twists, sessions, updatePc, updateNpc, deletePc, deleteNpc } = useStore();
   if (!pcs || !npcs || !twists || !sessions) {
     return <div>Загрузка данных...</div>;
   }
@@ -22,6 +30,51 @@ function Dashboard() {
   const handleNotesChange = (value: string) => {
     setNotes(value);
     localStorage.setItem('dm_tracker_quick_notes', value);
+  };
+
+  const handleEditCharacter = (character: PC | NPC, type: 'pc' | 'npc') => {
+    setEditingCharacter(character);
+    setFormType(type);
+    setShowForm(true);
+  };
+
+  const handleDeleteCharacter = async (character: PC | NPC, type: 'pc' | 'npc') => {
+    if (!window.confirm(`Удалить персонажа "${character.name}"?`)) return;
+    try {
+      if (type === 'pc') {
+        await deletePc(character.id);
+      } else {
+        await deleteNpc(character.id);
+      }
+    } catch (error) {
+      alert('Ошибка при удалении персонажа. Попробуйте снова.');
+      console.warn('Failed to delete character:', error);
+    }
+  };
+
+  const handleInventoryOpen = (pc: PC) => {
+    setInventoryPc(pc);
+  };
+
+  const handleInventoryClose = () => {
+    setInventoryPc(undefined);
+  };
+
+  const handleCharacterSubmit = async (data: any) => {
+    if (!editingCharacter) return;
+
+    try {
+      if (formType === 'pc') {
+        await updatePc(editingCharacter.id, data);
+      } else {
+        await updateNpc(editingCharacter.id, data);
+      }
+      setShowForm(false);
+      setEditingCharacter(undefined);
+    } catch (error) {
+      alert('Ошибка при сохранении персонажа. Попробуйте снова.');
+      console.warn('Failed to submit character:', error);
+    }
   };
 
   // Count active twists (not completed)
@@ -156,37 +209,43 @@ function Dashboard() {
 
           {/* Characters Tab */}
           {activeTab === 'characters' && (
-            <div style={{ display: 'grid', gap: 'var(--space-lg)' }}>
+            <div>
               {pcs.length > 0 && (
-                <div>
+                <>
                   <h4 className="h3 text-primary mb-3">ПЛ (Персонажи Игроков)</h4>
-                  <div style={{ display: 'grid', gap: 'var(--space-sm)', maxHeight: '280px', overflowY: 'auto' }}>
-                    {pcs.map((pc) => (
-                      <div key={pc.id} className="card bg-card rounded-lg p-3 border-l-2 border-primary">
-                        <p className="font-medium text-white text-sm">{pc.name}</p>
-                        {pc.player_name && <div className="small text-muted">👤 {pc.player_name}</div>}
-                        <div className="small text-muted">
-                          {pc.class && <span>{pc.class}</span>}
-                          {pc.level && <span> • Уровень {pc.level}</span>}
-                        </div>
-                      </div>
-                    ))}
+                  <div className="char-grid-wrapper">
+                    <div className="grid-container" style={{ marginBottom: 32 }}>
+                      {pcs.map((pc) => (
+                        <CharacterCard
+                          key={pc.id}
+                          character={pc}
+                          type="pc"
+                          onEdit={() => handleEditCharacter(pc, 'pc')}
+                          onDelete={() => handleDeleteCharacter(pc, 'pc')}
+                          onInventory={handleInventoryOpen}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
+                </>
               )}
               {npcs.length > 0 && (
-                <div>
+                <>
                   <h4 className="h3 text-purple mb-3">НПЛ (Персонажи без Игроков)</h4>
-                  <div style={{ display: 'grid', gap: 'var(--space-sm)', maxHeight: '280px', overflowY: 'auto' }}>
-                    {npcs.map((npc) => (
-                      <div key={npc.id} className="card bg-card rounded-lg p-3 border-l-2 border-purple">
-                        <p className="font-medium text-white text-sm">{npc.name}</p>
-                        {npc.role && <div className="small text-muted">👑 {npc.role}</div>}
-                        {npc.status && <div className="small text-muted">⚔️ {npc.status}</div>}
-                      </div>
-                    ))}
+                  <div className="char-grid-wrapper">
+                    <div className="grid-container">
+                      {npcs.map((npc) => (
+                        <CharacterCard
+                          key={npc.id}
+                          character={npc}
+                          type="npc"
+                          onEdit={() => handleEditCharacter(npc, 'npc')}
+                          onDelete={() => handleDeleteCharacter(npc, 'npc')}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
+                </>
               )}
             </div>
           )}
@@ -282,6 +341,25 @@ function Dashboard() {
           📢
         </button>
       </div>
+
+      {showForm && editingCharacter && (
+        <CharacterForm
+          type={formType}
+          character={editingCharacter}
+          onSubmit={handleCharacterSubmit}
+          onClose={() => {
+            setShowForm(false);
+            setEditingCharacter(undefined);
+          }}
+        />
+      )}
+
+      {inventoryPc && (
+        <InventoryModal
+          pc={inventoryPc}
+          onClose={handleInventoryClose}
+        />
+      )}
 
       {/* Telegram Broadcast Modal */}
       <TelegramBroadcastModal

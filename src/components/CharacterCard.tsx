@@ -48,46 +48,33 @@ export function CharacterCard({ character, type, onEdit, onDelete, onInventory }
     }
   };
 
-  // Для PC: отображаем класс и уровень
-  const getRoleText = (): string => {
-    if (type === 'pc') {
-      const pc = character as PC;
-      const classText = pc.class || 'Неизвестен';
-      const levelText = pc.level ? ` (Ур. ${pc.level})` : '';
-      return `${classText}${levelText}`;
-    } else {
-      // Для NPC: отображаем роль
-      const npc = character as NPC;
-      return npc.role || 'Неизвестная роль';
-    }
-  };
+  const pc = type === 'pc' ? (character as PC) : undefined;
+  const npc = type === 'npc' ? (character as NPC) : undefined;
 
   return (
-    <div className="bg-slate-800 rounded-lg shadow-lg p-4 hover:shadow-xl hover:bg-slate-750 transition-all duration-300 border border-slate-700 hover:border-slate-600">
-      {/* Заголовок: имя и дополнительная информация */}
-      <div className="flex items-start justify-between mb-3 gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="text-lg font-bold text-white">{character.name}</h3>
-            {/* Status badges for PC */}
-            {type === 'pc' && <StatusBadges statuses={(character as PC).statuses} maxVisible={5} />}
+    <div className="character-card">
+      <div className="character-card__content">
+        <div className="character-card__header">
+          <div>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="character-card__title">{character.name}</h3>
+                <p className="character-card__subtitle">
+                  {type === 'pc' ? `${pc?.race || 'Раса не указана'} • ${pc?.class || 'Класс не указан'} • Ур. ${pc?.level || '—'}` : npc?.role || 'Роль не указана'}
+                </p>
+              </div>
+              {type === 'pc' && <StatusBadges statuses={(character as PC).statuses} maxVisible={5} />}
+            </div>
           </div>
-          <p className="text-sm text-slate-400 mt-1">{getRoleText()}</p>
         </div>
-      </div>
 
-      {/* Дополнительная информация в зависимости от типа */}
-      <div className="text-sm text-slate-300 mb-4 space-y-1">
-        {type === 'pc' && (
-          <>
-            {(character as PC).player_name && (
-              <p>👤 Игрок: <span className="text-slate-100">{(character as PC).player_name}</span></p>
-            )}
-            {(character as PC).ac !== undefined && (
-              <p>🛡️ AC: <span className="text-slate-100">{(character as PC).ac}</span></p>
-            )}
-            <div className="flex items-center gap-2">
-              <p>❤️ HP: <span className="text-slate-100">
+        <div className="character-card__meta">
+          {type === 'pc' && (
+            <>
+              {pc?.player_name && (
+                <div className="character-card__detail">👤 Игрок: <span>{pc.player_name}</span></div>
+              )}
+              <div className="character-card__detail">❤️ HP: <span>
                 {isEditingHp ? (
                   <input
                     type="number"
@@ -97,73 +84,88 @@ export function CharacterCard({ character, type, onEdit, onDelete, onInventory }
                     onKeyDown={handleHpKeyDown}
                     autoFocus
                     min="0"
-                    className="w-12 px-1 py-0 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:outline-none focus:border-blue-400"
+                    className="character-card__hp-input"
                   />
                 ) : (
-                  <span onClick={() => {
-                    setIsEditingHp(true);
-                    setHpInput(String((character as PC).hp || 0));
-                  }} className="cursor-pointer hover:text-blue-300">
-                    {(character as PC).hp || 0}
+                  <span
+                    onClick={() => {
+                      setIsEditingHp(true);
+                      setHpInput(String(pc?.hp || 0));
+                    }}
+                    className="character-card__hp-value"
+                  >
+                    {pc?.hp || 0}
                   </span>
                 )}
-              </span></p>
-            </div>
-          </>
-        )}
-        {type === 'npc' && (
-          <>
-            {(character as NPC).location && (
-              <p>📍 Локация: <span className="text-slate-100">{(character as NPC).location}</span></p>
-            )}
-            {(character as NPC).status && (
-              <p>⚡ Статус: <span className={
-                (character as NPC).status === 'alive' ? 'text-green-400' :
-                (character as NPC).status === 'dead' ? 'text-red-400' :
-                'text-yellow-400'
-              }>
-                {(character as NPC).status === 'alive' ? 'Жив' :
-                 (character as NPC).status === 'dead' ? 'Мертв' :
-                 'Пропал'}
-              </span></p>
-            )}
-          </>
-        )}
+              </span></div>
+              {typeof pc?.ac === 'number' && (
+                <div className="character-card__detail">🛡️ AC: <span>{pc.ac}</span></div>
+              )}
+            </>
+          )}
+
+          {type === 'npc' && (
+            <>
+              {npc?.location && (
+                <div className="character-card__detail">📍 Локация: <span>{npc.location}</span></div>
+              )}
+              {npc?.status && (
+                <div className="character-card__detail">⚡ Статус: <span className={
+                  npc.status === 'alive' ? 'text-emerald-300' :
+                  npc.status === 'dead' ? 'text-rose-300' :
+                  'text-amber-300'
+                }>
+                  {npc.status === 'alive' ? 'Жив' : npc.status === 'dead' ? 'Мертв' : 'Пропал'}
+                </span></div>
+              )}
+            </>
+          )}
+        </div>
+
+        <div className="character-card__actions">
+          {type === 'pc' && (
+            <>
+              <button
+                type="button"
+                onClick={() => onInventory?.(character as PC)}
+                className="character-card__action-btn character-card__action-btn--inventory"
+                aria-label="Инвентарь"
+                title="Инвентарь"
+              >
+                🎒
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusPc(character as PC)}
+                className="character-card__action-btn character-card__action-btn--status"
+                aria-label="Статусы"
+                title="Статусы"
+              >
+                ✨
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            onClick={() => onEdit(character)}
+            className="character-card__action-btn character-card__action-btn--edit"
+            aria-label="Редактировать"
+            title="Редактировать"
+          >
+            ✏️
+          </button>
+          <button
+            type="button"
+            onClick={() => onDelete(character)}
+            className="character-card__action-btn character-card__action-btn--delete"
+            aria-label="Удалить"
+            title="Удалить"
+          >
+            🗑️
+          </button>
+        </div>
       </div>
 
-      {/* Кнопки действия */}
-      <div className="flex gap-2 flex-wrap">
-        {type === 'pc' && (
-          <>
-            <button
-              onClick={() => onInventory?.(character as PC)}
-              className="flex-1 px-3 py-2 bg-amber-600 hover:bg-amber-500 text-white text-sm font-medium rounded transition-colors min-w-fit"
-            >
-              🎒 Инвентарь
-            </button>
-            <button
-              onClick={() => setStatusPc(character as PC)}
-              className="flex-1 px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium rounded transition-colors min-w-fit"
-            >
-              ✨ Статусы
-            </button>
-          </>
-        )}
-        <button
-          onClick={() => onEdit(character)}
-          className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded transition-colors"
-        >
-          Редактировать
-        </button>
-        <button
-          onClick={() => onDelete(character)}
-          className="flex-1 px-3 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-medium rounded transition-colors"
-        >
-          Удалить
-        </button>
-      </div>
-      
-      {/* Status Modal */}
       {statusPc && (
         <StatusModal pc={statusPc} onClose={() => setStatusPc(undefined)} />
       )}

@@ -150,17 +150,19 @@ function Characters() {
           {pcs.length > 0 && (
             <div>
               <h3 className="h3 text-primary mb-4">ПЛ (Персонажи Игроков)</h3>
-              <div className="grid gap-lg grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                {pcs.map((pc) => (
-                  <CharacterCard
-                    key={pc.id}
-                    character={pc}
-                    type="pc"
-                    onEdit={() => handleEditCharacter(pc, 'pc')}
-                    onDelete={() => handleDeleteCharacter(pc, 'pc')}
-                    onInventory={handleInventoryOpen}
-                  />
-                ))}
+              <div className="char-grid-wrapper">
+                <div className="grid-container">
+                  {pcs.map((pc) => (
+                    <CharacterCard
+                      key={pc.id}
+                      character={pc}
+                      type="pc"
+                      onEdit={() => handleEditCharacter(pc, 'pc')}
+                      onDelete={() => handleDeleteCharacter(pc, 'pc')}
+                      onInventory={handleInventoryOpen}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -169,16 +171,18 @@ function Characters() {
           {npcs.length > 0 && (
             <div>
               <h3 className="h3 text-purple mb-4">НПЛ (Персонажи без Игроков)</h3>
-              <div className="grid gap-lg grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                {npcs.map((npc) => (
-                  <CharacterCard
-                    key={npc.id}
-                    character={npc}
-                    type="npc"
-                    onEdit={() => handleEditCharacter(npc, 'npc')}
-                    onDelete={() => handleDeleteCharacter(npc, 'npc')}
-                  />
-                ))}
+              <div className="char-grid-wrapper">
+                <div className="grid-container">
+                  {npcs.map((npc) => (
+                    <CharacterCard
+                      key={npc.id}
+                      character={npc}
+                      type="npc"
+                      onEdit={() => handleEditCharacter(npc, 'npc')}
+                      onDelete={() => handleDeleteCharacter(npc, 'npc')}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
           )}

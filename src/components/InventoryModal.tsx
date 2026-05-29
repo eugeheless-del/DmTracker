@@ -86,8 +86,8 @@ export default function InventoryModal({ pc: initialPc, onClose }: InventoryModa
   const inventory = pc.inventory || [];
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-slate-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-700">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-60">
+      <div className="bg-slate-900 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-700 shadow-2xl">
         {/* Header */}
         <div className="sticky top-0 bg-slate-800 border-b border-slate-700 p-6 flex items-center justify-between">
           <h2 className="text-2xl font-bold">🎒 Инвентарь: {pc.name}</h2>
