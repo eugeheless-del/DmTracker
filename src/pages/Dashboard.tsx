@@ -212,7 +212,7 @@ function Dashboard() {
             <div>
               {pcs.length > 0 && (
                 <>
-                  <h4 className="h3 text-primary mb-3">ПЛ (Персонажи Игроков)</h4>
+                  <h4 className="h3 text-primary mb-3">Игроки</h4>
                   <div className="char-grid-wrapper" style={{ marginBottom: 32 }}>
                       {pcs.map((pc) => (
                         <CharacterCard
@@ -229,7 +229,7 @@ function Dashboard() {
               )}
               {npcs.length > 0 && (
                 <>
-                  <h4 className="h3 text-purple mb-3">НПЛ (Персонажи без Игроков)</h4>
+                  <h4 className="h3 text-purple mb-3">NPC</h4>
                   <div className="char-grid-wrapper">
                       {npcs.map((npc) => (
                         <CharacterCard

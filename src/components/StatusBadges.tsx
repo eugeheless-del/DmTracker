@@ -71,7 +71,7 @@ export function StatusBadges({ statuses = [], maxVisible = 5 }: StatusBadgesProp
           </div>
 
           {/* Tooltip - ONLY ONE */}
-          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10 pointer-events-none">
+          <div className="tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10 pointer-events-none">
             <div className="bg-slate-900 text-white text-xs px-3 py-2 rounded-lg shadow-lg border border-slate-700 whitespace-nowrap">
               <p className="font-bold">{status.name}</p>
               {status.description && (
@@ -90,7 +90,7 @@ export function StatusBadges({ statuses = [], maxVisible = 5 }: StatusBadgesProp
           <div className="bg-slate-600 rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold text-white cursor-help hover:scale-110 transition-transform duration-200 shadow-md">
             +{hiddenCount}
           </div>
-          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10 pointer-events-none">
+          <div className="tooltip absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10 pointer-events-none">
             <div className="bg-slate-900 text-white text-xs px-3 py-2 rounded-lg shadow-lg border border-slate-700">
               +{hiddenCount} ещё статусов
             </div>

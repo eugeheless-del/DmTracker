@@ -149,7 +149,7 @@ function Characters() {
           {/* Player Characters (ПЛ) */}
           {pcs.length > 0 && (
             <div className="w-full">
-              <h3 className="h3 text-primary mb-4">ПЛ (Персонажи Игроков)</h3>
+              <h3 className="h3 text-primary mb-4">Игроки</h3>
               <div className="char-grid-wrapper w-full" style={{ marginBottom: '32px' }}>
                 {pcs.map((pc) => (
                   <CharacterCard
@@ -168,7 +168,7 @@ function Characters() {
           {/* Non-Player Characters (НПЛ) */}
           {npcs.length > 0 && (
             <div className="w-full">
-              <h3 className="h3 text-purple mb-4">НПЛ (Персонажи без Игроков)</h3>
+              <h3 className="h3 text-purple mb-4">NPC</h3>
               <div className="char-grid-wrapper w-full flex-1 min-w-0" style={{ marginBottom: '32px' }}>
                 {npcs.map((npc) => (
                   <CharacterCard

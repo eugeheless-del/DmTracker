@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useStore } from '../store';
 import { PC } from '../types';
 
@@ -58,9 +59,10 @@ export default function StatusModal({ pc, onClose }: StatusModalProps) {
 
   const statuses = pc.statuses || [];
 
-  return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-60">
-      <div className="bg-slate-900 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-700 shadow-2xl">
+  return createPortal(
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60" />
+      <div className="relative z-[1001] bg-slate-900 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-700 shadow-2xl">
         {/* Header */}
         <div className="sticky top-0 bg-slate-800 border-b border-slate-700 p-6 flex items-center justify-between">
           <h2 className="text-2xl font-bold">✨ Статусы: {pc.name}</h2>
@@ -168,6 +170,7 @@ export default function StatusModal({ pc, onClose }: StatusModalProps) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -94,8 +94,7 @@
 
 
 /* Специфичные переопределения для карточек в гриде */
-.char-grid-wrapper .card,
-.char-grid-wrapper .character-card {
+.char-grid-wrapper .card {
   border-radius: 16px;
   overflow: hidden;
 }
@@ -104,14 +103,30 @@
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
+  position: relative;
+  overflow: visible;
+}
+
+.character-card__content-wrapper {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   padding: 1.5rem;
   background: rgba(30, 41, 59, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
   color: #f8fafc;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  overflow: hidden;
+}
+
+.character-card .tooltip,
+.character-card [data-tooltip] {
+  position: absolute;
+  z-index: 9999 !important;
 }
 
 .character-card__header {

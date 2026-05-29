@@ -140,6 +140,226 @@ button, input, textarea, select {
   color: var(--text-high);
 }
 
+.inventory-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+}
+
+.inventory-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(7, 9, 20, 0.75);
+  backdrop-filter: blur(10px);
+}
+
+.inventory-modal-panel {
+  position: relative;
+  width: min(760px, 100%);
+  max-height: 90vh;
+  overflow: hidden;
+  border-radius: 24px;
+  border: 1px solid rgba(86, 128, 233, 0.35);
+  background: rgba(20, 24, 38, 0.95);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  z-index: 1001;
+}
+
+.inventory-modal-header {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.5rem 1.75rem 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(20, 24, 38, 0.98);
+  backdrop-filter: blur(8px);
+}
+
+.inventory-modal-tag {
+  margin: 0 0 0.35rem;
+  color: #84CEEB;
+  letter-spacing: 0.08em;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.inventory-modal-title {
+  margin: 0;
+  font-size: clamp(1.75rem, 2.4vw, 2.4rem);
+  font-weight: 800;
+  line-height: 1.05;
+  color: #ffffff;
+}
+
+.inventory-modal-close-btn {
+  width: 2.75rem;
+  height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: background 180ms ease, color 180ms ease, transform 180ms ease;
+}
+
+.inventory-modal-close-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+}
+
+.inventory-modal-body {
+  padding: 1.5rem 1.75rem 1.75rem;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.inventory-modal-section {
+  display: grid;
+  gap: 1rem;
+}
+
+.inventory-modal-section-header {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.inventory-modal-section-title {
+  margin: 0;
+  color: #ffffff;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.inventory-modal-section-subtitle {
+  margin: 0;
+  color: rgba(226, 232, 240, 0.8);
+  font-size: 0.95rem;
+}
+
+.inventory-modal-form {
+  padding: 1.25rem;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.inventory-modal-form-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.inventory-modal-input,
+.inventory-modal-textarea {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border-radius: 18px;
+  padding: 0.95rem 1rem;
+}
+
+.inventory-modal-input:focus,
+.inventory-modal-textarea:focus {
+  outline: none;
+  border-color: #5680E9;
+  box-shadow: 0 0 0 4px rgba(86, 128, 233, 0.18);
+}
+
+.inventory-modal-textarea {
+  min-height: 7rem;
+  resize: vertical;
+}
+
+.inventory-modal-add-btn {
+  width: 100%;
+  border-radius: 18px;
+  padding: 0.95rem 1rem;
+  box-shadow: 0 10px 30px rgba(86, 128, 233, 0.2);
+}
+
+.inventory-modal-list-section {
+  padding: 1.25rem;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.inventory-modal-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.inventory-modal-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1rem 1rem 1.15rem;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.inventory-modal-item-info {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.inventory-modal-item-name {
+  margin: 0;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.inventory-modal-item-meta,
+.inventory-modal-item-description {
+  margin: 0;
+  color: rgba(226, 232, 240, 0.8);
+  font-size: 0.95rem;
+}
+
+.inventory-modal-item-description {
+  line-height: 1.5;
+}
+
+.inventory-modal-delete-btn {
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 14px;
+  border: 1px solid rgba(248, 113, 113, 0.18);
+  background: rgba(248, 113, 113, 0.08);
+  color: #f87171;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 180ms ease, transform 180ms ease;
+}
+
+.inventory-modal-delete-btn:hover {
+  background: rgba(248, 113, 113, 0.18);
+  transform: translateY(-1px);
+}
+
+.inventory-modal-empty {
+  padding: 1.5rem;
+  border-radius: 18px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(226, 232, 240, 0.8);
+}
+
 /* Forms */
 .form-control {
   display: grid;

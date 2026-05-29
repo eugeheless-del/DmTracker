@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useStore } from '../store';
 import { PC } from '../types';
 
@@ -85,134 +86,116 @@ export default function InventoryModal({ pc: initialPc, onClose }: InventoryModa
 
   const inventory = pc.inventory || [];
 
-  return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-60">
-      <div className="bg-slate-900 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-700 shadow-2xl">
-        {/* Header */}
-        <div className="sticky top-0 bg-slate-800 border-b border-slate-700 p-6 flex items-center justify-between">
-          <h2 className="text-2xl font-bold">🎒 Инвентарь: {pc.name}</h2>
+  return createPortal(
+    <div className="inventory-modal-overlay">
+      <div className="inventory-modal-backdrop" />
+      <div className="inventory-modal-panel">
+        <div className="inventory-modal-header">
+          <div>
+            <p className="inventory-modal-tag">Инвентарь персонажа</p>
+            <h2 className="inventory-modal-title">🎒 {pc.name}</h2>
+          </div>
+
           <button
+            type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-white transition-colors text-2xl"
+            aria-label="Закрыть модальное окно"
+            className="inventory-modal-close-btn"
           >
             ✕
           </button>
         </div>
 
-        <div className="p-6 space-y-8">
-          {/* Add Item Form */}
-          <div className="bg-slate-700 rounded-lg p-6 border border-slate-600">
-            <h3 className="text-lg font-bold mb-4 text-green-400">➕ Добавить предмет</h3>
-            <form onSubmit={handleAddItem} className="space-y-4">
-              {/* Item Name */}
-              <div>
-                <label className="block text-sm font-medium mb-2">Название *</label>
+        <div className="inventory-modal-body">
+          <section className="inventory-modal-section inventory-modal-form">
+            <div className="inventory-modal-section-header">
+              <p className="inventory-modal-section-title">➕ Добавить предмет</p>
+              <p className="inventory-modal-section-subtitle">Создайте новый предмет с количеством и описанием.</p>
+            </div>
+
+            <form onSubmit={handleAddItem} className="inventory-modal-form-grid">
+              <label className="form-control">
+                <span className="label">Название *</span>
                 <input
                   type="text"
                   value={itemName}
                   onChange={(e) => setItemName(e.target.value)}
                   placeholder="Введите название предмета"
-                  className="w-full px-4 py-2 bg-slate-600 border border-slate-500 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-green-500"
+                  className="input inventory-modal-input"
                 />
-              </div>
+              </label>
 
-              {/* Quantity */}
-              <div>
-                <label className="block text-sm font-medium mb-2">Количество</label>
+              <label className="form-control">
+                <span className="label">Количество</span>
                 <input
                   type="number"
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value === '' ? '' : parseInt(e.target.value) || 1)}
                   min="1"
                   placeholder="1"
-                  className="w-full px-4 py-2 bg-slate-600 border border-slate-500 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-green-500"
+                  className="input inventory-modal-input"
                 />
-              </div>
+              </label>
 
-              {/* Description */}
-              <div>
-                <label className="block text-sm font-medium mb-2">Описание</label>
+              <label className="form-control">
+                <span className="label">Описание</span>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Дополнительное описание предмета (опционально)"
-                  rows={3}
-                  className="w-full px-4 py-2 bg-slate-600 border border-slate-500 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-green-500 resize-none"
+                  rows={4}
+                  className="textarea inventory-modal-textarea"
                 />
-              </div>
+              </label>
 
-              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+                className="btn btn--primary inventory-modal-add-btn"
               >
-                {isLoading ? 'Загрузка...' : '✓ Добавить'}
+                {isLoading ? 'Загрузка...' : 'Добавить'}
               </button>
             </form>
-          </div>
+          </section>
 
-          {/* Inventory List */}
-          <div>
-            <h3 className="text-lg font-bold mb-4 text-blue-400">
-              📦 Инвентарь ({inventory.length})
-            </h3>
+          <section className="inventory-modal-section inventory-modal-list-section">
+            <div className="inventory-modal-section-header">
+              <p className="inventory-modal-section-title">📦 Текущий инвентарь</p>
+              <p className="inventory-modal-section-subtitle">Всего предметов: {inventory.length}</p>
+            </div>
 
             {inventory.length === 0 ? (
-              <div className="bg-slate-700 rounded-lg p-6 border border-slate-600 text-center text-slate-400">
+              <div className="inventory-modal-empty">
                 Инвентарь пуст. Добавьте первый предмет выше.
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="inventory-modal-list">
                 {inventory.map((item) => (
-                  <div
-                    key={item.id}
-                    className="bg-slate-700 rounded-lg p-4 border border-slate-600 flex items-start justify-between gap-4"
-                  >
-                    <div className="flex-1 min-w-0">
-                      {/* Item Name */}
-                      <p className="font-bold text-white truncate">
-                        {item.item_name || 'Без названия'}
-                      </p>
-
-                      {/* Quantity */}
-                      <p className="text-sm text-slate-300">
-                        Кол-во: <span className="font-semibold">{item.quantity || 0}</span>
-                      </p>
-
-                      {/* Description */}
+                  <article key={item.id} className="inventory-modal-item">
+                    <div className="inventory-modal-item-info">
+                      <p className="inventory-modal-item-name">{item.item_name || 'Без названия'}</p>
+                      <p className="inventory-modal-item-meta">Кол-во: <span>{item.quantity || 0}</span></p>
                       {item.description && (
-                        <p className="text-sm text-slate-400 mt-2 line-clamp-2">
-                          {item.description}
-                        </p>
+                        <p className="inventory-modal-item-description">{item.description}</p>
                       )}
                     </div>
 
-                    {/* Delete Button */}
                     <button
+                      type="button"
                       onClick={() => handleDeleteItem(item.id)}
-                      className="px-3 py-2 bg-red-600 hover:bg-red-700 rounded-lg font-medium transition-colors whitespace-nowrap text-sm flex-shrink-0"
+                      className="inventory-modal-delete-btn"
                       title="Удалить предмет"
                     >
-                      🗑️ Удалить
+                      ✕
                     </button>
-                  </div>
+                  </article>
                 ))}
               </div>
             )}
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="sticky bottom-0 bg-slate-800 border-t border-slate-700 p-6 flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg font-medium transition-colors"
-          >
-            Закрыть
-          </button>
+          </section>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -53,7 +53,7 @@ export function CharacterCard({ character, type, onEdit, onDelete, onInventory }
 
   return (
     <div className="character-card relative">
-      <div className="character-card__content">
+      <div className="character-card__content-wrapper">
         <div className="character-card__header">
           <div>
             <div className="flex items-start justify-between gap-3">
@@ -63,11 +63,6 @@ export function CharacterCard({ character, type, onEdit, onDelete, onInventory }
                   {type === 'pc' ? `${pc?.race || 'Раса не указана'} • ${pc?.class || 'Класс не указан'} • Ур. ${pc?.level || '—'}` : npc?.role || 'Роль не указана'}
                 </p>
               </div>
-              {type === 'pc' && (
-                <div className="status-badges-wrapper">
-                  <StatusBadges statuses={(character as PC).statuses} maxVisible={5} />
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -169,6 +164,12 @@ export function CharacterCard({ character, type, onEdit, onDelete, onInventory }
           </button>
         </div>
       </div>
+
+      {type === 'pc' && (
+        <div className="status-badges-wrapper">
+          <StatusBadges statuses={(character as PC).statuses} maxVisible={5} />
+        </div>
+      )}
 
       {statusPc && (
         <StatusModal pc={statusPc} onClose={() => setStatusPc(undefined)} />
