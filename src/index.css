@@ -134,7 +134,33 @@
   margin-top: 4px;
 }
 
-.status-badges,
+.status-badges
+{
+ width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.3); /* Белая обводка для контраста */
+  background: rgba(0, 0, 0, 0.4); /* Полупрозрачный фон, чтобы текст под ними не мешал */
+  backdrop-filter: blur(4px); 
+  overflow: visible; /* Позволяет статусам выходить за пределы карточки */
+  position: relative; /* Для правильного позиционирования внутри карточки */
+}
+
+.status-badges-wrapper {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  flex-direction: column-reverse; /* Новые статусы снизу, старые сверху (или наоборот, как удобнее) */
+  gap: 6px;
+  z-index: 10;
+} 
+
 .character-card__status-badges {
   display: flex;
   gap: 4px;

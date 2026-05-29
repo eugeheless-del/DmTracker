@@ -52,7 +52,7 @@ export function CharacterCard({ character, type, onEdit, onDelete, onInventory }
   const npc = type === 'npc' ? (character as NPC) : undefined;
 
   return (
-    <div className="character-card">
+    <div className="character-card relative">
       <div className="character-card__content">
         <div className="character-card__header">
           <div>
@@ -63,7 +63,11 @@ export function CharacterCard({ character, type, onEdit, onDelete, onInventory }
                   {type === 'pc' ? `${pc?.race || 'Раса не указана'} • ${pc?.class || 'Класс не указан'} • Ур. ${pc?.level || '—'}` : npc?.role || 'Роль не указана'}
                 </p>
               </div>
-              {type === 'pc' && <StatusBadges statuses={(character as PC).statuses} maxVisible={5} />}
+              {type === 'pc' && (
+                <div className="status-badges-wrapper">
+                  <StatusBadges statuses={(character as PC).statuses} maxVisible={5} />
+                </div>
+              )}
             </div>
           </div>
         </div>
