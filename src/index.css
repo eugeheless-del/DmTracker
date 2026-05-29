@@ -104,6 +104,7 @@
   min-width: 0;
   box-sizing: border-box;
   position: relative;
+  z-index: 10;
   overflow: visible;
 }
 
@@ -126,7 +127,7 @@
 .character-card .tooltip,
 .character-card [data-tooltip] {
   position: absolute;
-  z-index: 9999 !important;
+  z-index: 50 !important;
 }
 
 .character-card__header {
@@ -174,7 +175,7 @@
   flex-direction: column-reverse; /* Новые статусы снизу, старые сверху (или наоборот, как удобнее) */
   gap: 6px;
   z-index: 10;
-} 
+}
 
 .character-card__status-badges {
   display: flex;

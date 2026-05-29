@@ -17,7 +17,7 @@ interface StatusModalProps {
 export default function StatusModal({ pc, onClose }: StatusModalProps) {
   const { addStatus, deleteStatus } = useStore();
   const [statusName, setStatusName] = useState('');
-  const [statusDescription, setStatusDescription] = useState('');
+  const [statusType, setStatusType] = useState('');
   const [isLoading] = useState(false);
 
   // Handle add status
@@ -33,12 +33,12 @@ export default function StatusModal({ pc, onClose }: StatusModalProps) {
     try {
       await addStatus(pc.id, {
         name: statusName.trim(),
-        description: statusDescription.trim() || undefined,
+        description: statusType.trim() || undefined,
       });
 
       // Clear form but keep modal open
       setStatusName('');
-      setStatusDescription('');
+      setStatusType('');
     } catch (error) {
       alert('Ошибка при добавлении статуса');
       console.warn('Failed to add status effect:', error);
@@ -62,13 +62,16 @@ export default function StatusModal({ pc, onClose }: StatusModalProps) {
   return createPortal(
     <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60" />
-      <div className="relative z-[1001] bg-slate-900 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-700 shadow-2xl">
+      <div className="relative z-[1001] bg-[rgba(20,24,38,0.95)] border border-[rgba(86,128,233,0.35)] rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl backdrop-blur-xl">
         {/* Header */}
-        <div className="sticky top-0 bg-slate-800 border-b border-slate-700 p-6 flex items-center justify-between">
-          <h2 className="text-2xl font-bold">✨ Статусы: {pc.name}</h2>
+        <div className="sticky top-0 bg-slate-950/95 border-b border-[rgba(86,128,233,0.15)] p-6 flex items-center justify-between backdrop-blur-md">
+          <div>
+            <p className="text-sm uppercase tracking-[0.3em] text-blue-300 mb-2">Статусы персонажа</p>
+            <h2 className="text-3xl font-semibold text-white">{pc.name}</h2>
+          </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white transition-colors text-2xl"
+            className="text-slate-300 hover:text-white transition-colors text-2xl"
           >
             ✕
           </button>
@@ -76,30 +79,30 @@ export default function StatusModal({ pc, onClose }: StatusModalProps) {
 
         <div className="p-6 space-y-8">
           {/* Add Status Form */}
-          <div className="bg-slate-700 rounded-lg p-6 border border-slate-600">
-            <h3 className="text-lg font-bold mb-4 text-green-400">➕ Добавить статус</h3>
+          <div className="bg-slate-800/50 rounded-2xl p-6 border border-slate-600/60 backdrop-blur-sm">
+            <h3 className="text-lg font-semibold mb-4 text-blue-300">➕ Добавить статус</h3>
             <form onSubmit={handleAddStatus} className="space-y-4">
               {/* Status Name */}
               <div>
-                <label className="block text-sm font-medium mb-2">Название статуса *</label>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Название статуса *</label>
                 <input
                   type="text"
                   value={statusName}
                   onChange={(e) => setStatusName(e.target.value)}
-                  placeholder="Введите название статуса (например: Отравлен, Ослеплен)"
-                  className="w-full px-4 py-2 bg-slate-600 border border-slate-500 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-green-500"
+                  placeholder="Например: Отравлен, Ослеплен"
+                  className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600 rounded-2xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                 />
               </div>
 
-              {/* Status Description */}
+              {/* Status Type */}
               <div>
-                <label className="block text-sm font-medium mb-2">Описание</label>
-                <textarea
-                  value={statusDescription}
-                  onChange={(e) => setStatusDescription(e.target.value)}
-                  placeholder="Дополнительное описание статуса или условия (опционально)"
-                  rows={3}
-                  className="w-full px-4 py-2 bg-slate-600 border border-slate-500 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-green-500 resize-none"
+                <label className="block text-sm font-medium text-slate-300 mb-2">Цвет / Тип</label>
+                <input
+                  type="text"
+                  value={statusType}
+                  onChange={(e) => setStatusType(e.target.value)}
+                  placeholder="Например: Ярко-синий, Дебафф"
+                  className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600 rounded-2xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                 />
               </div>
 
@@ -107,7 +110,7 @@ export default function StatusModal({ pc, onClose }: StatusModalProps) {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:cursor-not-allowed rounded-lg font-medium transition-colors"
+                className="w-full px-5 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-2xl font-semibold shadow-lg shadow-blue-500/20 transition hover:from-blue-400 hover:to-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isLoading ? 'Загрузка...' : '✓ Добавить'}
               </button>
@@ -116,12 +119,10 @@ export default function StatusModal({ pc, onClose }: StatusModalProps) {
 
           {/* Status List */}
           <div>
-            <h3 className="text-lg font-bold mb-4 text-blue-400">
-              ✨ Активные статусы ({statuses.length})
-            </h3>
+            <h3 className="text-lg font-semibold mb-4 text-blue-300">✨ Активные статусы ({statuses.length})</h3>
 
             {statuses.length === 0 ? (
-              <div className="bg-slate-700 rounded-lg p-6 border border-slate-600 text-center text-slate-400">
+              <div className="bg-slate-800/50 rounded-2xl p-6 border border-slate-600/60 text-center text-slate-400">
                 Нет активных статусов. Добавьте первый статус выше.
               </div>
             ) : (
@@ -129,26 +130,18 @@ export default function StatusModal({ pc, onClose }: StatusModalProps) {
                 {statuses.map((status) => (
                   <div
                     key={status.id}
-                    className="bg-slate-700 rounded-lg p-4 border border-slate-600 flex items-start justify-between gap-4"
+                    className="bg-slate-800/50 rounded-2xl p-4 border border-slate-600/60 flex items-start justify-between gap-4 backdrop-blur-sm"
                   >
                     <div className="flex-1 min-w-0">
-                      {/* Status Name */}
-                      <p className="font-bold text-white truncate">
-                        {status.name || 'Без названия'}
-                      </p>
-
-                      {/* Status Description */}
+                      <p className="font-semibold text-white truncate">{status.name || 'Без названия'}</p>
                       {status.description && (
-                        <p className="text-sm text-slate-400 mt-2 line-clamp-3">
-                          {status.description}
-                        </p>
+                        <p className="text-sm text-slate-400 mt-2">{status.description}</p>
                       )}
                     </div>
 
-                    {/* Delete Button */}
                     <button
                       onClick={() => handleDeleteStatus(status.id)}
-                      className="px-3 py-2 bg-red-600 hover:bg-red-700 rounded-lg font-medium transition-colors whitespace-nowrap text-sm flex-shrink-0"
+                      className="px-3 py-2 bg-red-600 hover:bg-red-700 rounded-2xl font-medium transition-colors whitespace-nowrap text-sm flex-shrink-0"
                       title="Удалить статус"
                     >
                       🗑️ Удалить
@@ -161,10 +154,10 @@ export default function StatusModal({ pc, onClose }: StatusModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 bg-slate-800 border-t border-slate-700 p-6 flex justify-end gap-3">
+        <div className="sticky bottom-0 bg-slate-950/95 border-t border-[rgba(86,128,233,0.15)] p-6 flex justify-end gap-3 backdrop-blur-md">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg font-medium transition-colors"
+            className="px-4 py-2 bg-slate-700/80 hover:bg-slate-600 rounded-2xl text-white font-medium transition"
           >
             Закрыть
           </button>

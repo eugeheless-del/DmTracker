@@ -71,25 +71,29 @@ export function TwistForm({ twist, onSubmit, onClose }: TwistFormProps) {
   };
 
   return (
-    <>
-      {/* Semi-transparent background */}
-      <div
-        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-        onClick={onClose}
-      >
-        {/* Modal window */}
-        <div
-          className="bg-slate-900 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <h2 className="text-xl font-bold mb-4 text-white">
-            {twist ? 'Редактировать твист' : 'Новый твист'}
+    <div className="form-modal-overlay" onClick={onClose}>
+      <div className="form-modal-backdrop" />
+      <div className="form-modal-panel" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="form-modal-header">
+          <h2 className="form-modal-title">
+            {twist ? '✏️ Редактировать твист' : '✨ Новый твист'}
           </h2>
+          <button
+            onClick={onClose}
+            className="form-modal-close-btn"
+            type="button"
+          >
+            ✕
+          </button>
+        </div>
 
+        {/* Body */}
+        <div className="form-modal-body">
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* TITLE */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">
+            <div className="form-modal-field">
+              <label className="form-modal-label">
                 Имя твиста *
               </label>
               <input
@@ -98,23 +102,23 @@ export function TwistForm({ twist, onSubmit, onClose }: TwistFormProps) {
                 value={formData.title || ''}
                 onChange={handleChange}
                 placeholder="Например: Появление врага"
-                className={`w-full px-3 py-2 bg-slate-800 text-white rounded border ${
-                  errors.title ? 'border-red-500' : 'border-slate-700'
-                } focus:outline-none focus:border-blue-500 transition-colors`}
+                className="form-modal-input"
               />
-              {errors.title && <p className="text-red-400 text-xs mt-1">{errors.title}</p>}
+              {errors.title && (
+                <p className="form-modal-error">{errors.title}</p>
+              )}
             </div>
 
             {/* TYPE */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">
+            <div className="form-modal-field">
+              <label className="form-modal-label">
                 Тип твиста
               </label>
               <select
                 name="type"
                 value={formData.type || 'revelation'}
                 onChange={handleChange}
-                className="w-full px-3 py-2 bg-slate-800 text-white rounded border border-slate-700 focus:outline-none focus:border-blue-500 transition-colors"
+                className="form-modal-select"
               >
                 {Object.entries(twistTypeLabels).map(([key, label]) => (
                   <option key={key} value={key}>
@@ -125,8 +129,8 @@ export function TwistForm({ twist, onSubmit, onClose }: TwistFormProps) {
             </div>
 
             {/* DESCRIPTION */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">
+            <div className="form-modal-field">
+              <label className="form-modal-label">
                 Описание
               </label>
               <textarea
@@ -135,13 +139,13 @@ export function TwistForm({ twist, onSubmit, onClose }: TwistFormProps) {
                 onChange={handleChange}
                 placeholder="Детали твиста"
                 rows={3}
-                className="w-full px-3 py-2 bg-slate-800 text-white rounded border border-slate-700 focus:outline-none focus:border-blue-500 transition-colors"
+                className="form-modal-textarea"
               />
             </div>
 
             {/* TRIGGER_CONDITION */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">
+            <div className="form-modal-field">
+              <label className="form-modal-label">
                 Триггер (условие)
               </label>
               <input
@@ -150,13 +154,13 @@ export function TwistForm({ twist, onSubmit, onClose }: TwistFormProps) {
                 value={formData.trigger_condition || ''}
                 onChange={handleChange}
                 placeholder="Когда произойдёт этот твист?"
-                className="w-full px-3 py-2 bg-slate-800 text-white rounded border border-slate-700 focus:outline-none focus:border-blue-500 transition-colors"
+                className="form-modal-input"
               />
             </div>
 
             {/* CONSEQUENCE */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">
+            <div className="form-modal-field">
+              <label className="form-modal-label">
                 Последствие
               </label>
               <textarea
@@ -165,47 +169,47 @@ export function TwistForm({ twist, onSubmit, onClose }: TwistFormProps) {
                 onChange={handleChange}
                 placeholder="Что произойдёт в результате?"
                 rows={2}
-                className="w-full px-3 py-2 bg-slate-800 text-white rounded border border-slate-700 focus:outline-none focus:border-blue-500 transition-colors"
+                className="form-modal-textarea"
               />
             </div>
 
             {/* STATUS */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">
+            <div className="form-modal-field">
+              <label className="form-modal-label">
                 Статус
               </label>
               <select
                 name="status"
                 value={formData.status || 'hidden'}
                 onChange={handleChange}
-                className="w-full px-3 py-2 bg-slate-800 text-white rounded border border-slate-700 focus:outline-none focus:border-blue-500 transition-colors"
+                className="form-modal-select"
               >
-                <option value="hidden">Скрыт</option>
-                <option value="ready">Готов</option>
-                <option value="revealed">Раскрыт</option>
-                <option value="completed">Завершён</option>
+                <option value="hidden">🙈 Скрыт</option>
+                <option value="ready">⚡ Готов</option>
+                <option value="revealed">👁️ Раскрыт</option>
+                <option value="completed">✅ Завершён</option>
               </select>
             </div>
 
-            {/* Submit and Close buttons */}
-            <div className="flex gap-2 pt-4">
-              <button
-                type="submit"
-                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded transition-colors"
-              >
-                {twist ? 'Сохранить' : 'Создать'}
-              </button>
+            {/* Footer */}
+            <div className="form-modal-footer">
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white font-medium rounded transition-colors"
+                className="form-modal-btn form-modal-btn-secondary"
               >
                 Отмена
+              </button>
+              <button
+                type="submit"
+                className="form-modal-btn form-modal-btn-primary"
+              >
+                {twist ? 'Сохранить' : 'Создать'}
               </button>
             </div>
           </form>
         </div>
       </div>
-    </>
+    </div>
   );
 }

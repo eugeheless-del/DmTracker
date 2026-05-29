@@ -14,55 +14,36 @@ interface SessionFormProps {
 }
 
 export function SessionForm({ session, availablePCs, onSubmit, onClose }: SessionFormProps) {
-  // Initialize form data - ensure date is in YYYY-MM-DD format
- /*  const [formData, setFormData] = useState<any>(
-    session
-      ? {
-          ...session,
-          // Ensure date is properly formatted (remove time part if present)
-          date: session.date ? session.date.split('T')[0] : '',
-        }
-      : {
-          name: '',
-          description: '',
-          date: '',
-          notes: '',
-          pcids: [] as string[],
-          npcids: [] as string[],
-          twistids: [] as string[],
-        }
-  ); */
   const [formData, setFormData] = useState<{
-  name: string;
-  description: string;
-  date: string;
-  notes: string;
-  pc_ids: string[];
-  npc_ids: string[];
-  twist_ids: string[];
-}>(() => {
-  if (session) {
+    name: string;
+    description: string;
+    date: string;
+    notes: string;
+    pc_ids: string[];
+    npc_ids: string[];
+    twist_ids: string[];
+  }>(() => {
+    if (session) {
+      return {
+        name: session.name || '',
+        description: session.description || '',
+        date: session.date ? session.date.split('T')[0] : '',
+        notes: session.notes || '',
+        pc_ids: Array.isArray(session.pc_ids) ? session.pc_ids : [],
+        npc_ids: Array.isArray(session.npc_ids) ? session.npc_ids : [],
+        twist_ids: Array.isArray(session.twist_ids) ? session.twist_ids : [],
+      };
+    }
     return {
-      name: session.name || '',
-      description: session.description || '',
-      date: session.date ? session.date.split('T')[0] : '',
-      notes: session.notes || '',
-      // Ensure arrays from DB (snake_case)
-      pc_ids: Array.isArray(session.pc_ids) ? session.pc_ids : [],
-      npc_ids: Array.isArray(session.npc_ids) ? session.npc_ids : [],
-      twist_ids: Array.isArray(session.twist_ids) ? session.twist_ids : [],
+      name: '',
+      description: '',
+      date: '',
+      notes: '',
+      pc_ids: [],
+      npc_ids: [],
+      twist_ids: [],
     };
-  }
-  return {
-    name: '',
-    description: '',
-    date: '',
-    notes: '',
-    pc_ids: [],
-    npc_ids: [],
-    twist_ids: [],
-  };
-});
+  });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showPreview, setShowPreview] = useState(false);
@@ -72,7 +53,6 @@ export function SessionForm({ session, availablePCs, onSubmit, onClose }: Sessio
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    // For date field, ensure proper YYYY-MM-DD format
     const processedValue = name === 'date' ? value.split('T')[0] : value;
     setFormData({ ...formData, [name]: processedValue });
     if (errors[name]) {
@@ -94,7 +74,7 @@ export function SessionForm({ session, availablePCs, onSubmit, onClose }: Sessio
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
     if (!formData.name || formData.name.trim() === '') {
-      newErrors.name = 'Session name is required';
+      newErrors.name = 'Имя сессии обязательно';
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -118,91 +98,85 @@ export function SessionForm({ session, availablePCs, onSubmit, onClose }: Sessio
       console.error('Failed to submit session:', error);
       alert('Ошибка при сохранении сессии. Попробуйте снова.');
     }
-    
   };
 
   return (
-    <>
-      {/* Semi-transparent background */}
-      <div
-        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-        onClick={onClose}
-      >
-        {/* Modal window */}
-        <div
-          className="bg-slate-900 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700 sticky top-0 bg-slate-900">
-            <h2 className="text-xl font-bold text-white">
-              {session ? 'Edit Session' : 'New Session'}
-            </h2>
-            <button
-              onClick={onClose}
-              className="text-slate-400 hover:text-slate-200 text-2xl"
-            >
-              ✕
-            </button>
-          </div>
+    <div className="form-modal-overlay" onClick={onClose}>
+      <div className="form-modal-backdrop" />
+      <div className="form-modal-panel" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="form-modal-header">
+          <h2 className="form-modal-title">
+            {session ? '✏️ Редактировать сессию' : '🎲 Новая сессия'}
+          </h2>
+          <button
+            onClick={onClose}
+            className="form-modal-close-btn"
+            type="button"
+          >
+            ✕
+          </button>
+        </div>
 
-          <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        {/* Body */}
+        <div className="form-modal-body">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {/* NAME */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">
-                Session Name *
+            <div className="form-modal-field">
+              <label className="form-modal-label">
+                Имя сессии *
               </label>
               <input
                 type="text"
                 name="name"
                 value={formData.name || ''}
                 onChange={handleChange}
-                placeholder="e.g. Session 1 - The Beginning"
-                className={`w-full px-3 py-2 bg-slate-800 text-white rounded border ${
-                  errors.name ? 'border-red-500' : 'border-slate-700'
-                } focus:outline-none focus:border-blue-500 transition-colors`}
+                placeholder="Например: Сессия 1 - Начало"
+                className="form-modal-input"
               />
-              {errors.name && <p className="text-red-400 text-xs mt-1">{errors.name}</p>}
+              {errors.name && (
+                <p className="form-modal-error">{errors.name}</p>
+              )}
             </div>
 
             {/* DESCRIPTION */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">
-                Description
+            <div className="form-modal-field">
+              <label className="form-modal-label">
+                Описание
               </label>
               <input
                 type="text"
                 name="description"
                 value={formData.description || ''}
                 onChange={handleChange}
-                placeholder="Brief summary of what happened in this session"
-                className="w-full px-3 py-2 bg-slate-800 text-white rounded border border-slate-700 focus:outline-none focus:border-blue-500 transition-colors"
+                placeholder="Краткое резюме того, что произошло"
+                className="form-modal-input"
               />
             </div>
 
             {/* DATE */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">
-                Session Date (YYYY-MM-DD)
+            <div className="form-modal-field">
+              <label className="form-modal-label">
+                Дата сессии
               </label>
               <input
                 type="date"
                 name="date"
                 value={formData.date ? formData.date.split('T')[0] : ''}
                 onChange={handleChange}
-                className="w-full px-3 py-2 bg-slate-800 text-white rounded border border-slate-700 focus:outline-none focus:border-blue-500 transition-colors"
+                className="form-modal-input"
               />
             </div>
 
             {/* PLAYER CHARACTERS SELECTION */}
             {availablePCs.length > 0 && (
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Player Characters
+              <div className="form-modal-field">
+                <label className="form-modal-label">
+                  Персонажи участники
                 </label>
-                <div className="space-y-2 max-h-40 overflow-y-auto bg-slate-700/50 p-3 rounded-lg border border-slate-600">
+                <div style={{ background: 'rgba(255, 255, 255, 0.05)' }} className="space-y-2 max-h-48 overflow-y-auto p-3 rounded-lg border border-slate-600">
                   {availablePCs.map((pc) => (
-                    <label key={pc.id} className="flex items-center gap-2 cursor-pointer">
+                    <label key={pc.id} className="flex items-center gap-2 cursor-pointer hover:bg-slate-700/50 p-2 rounded-lg transition">
                       <input
                         type="checkbox"
                         checked={Array.isArray(formData.pc_ids) && formData.pc_ids.includes(pc.id)}
@@ -220,29 +194,29 @@ export function SessionForm({ session, availablePCs, onSubmit, onClose }: Sessio
             )}
 
             {/* NOTES / LOG */}
-            <div className="flex flex-col">
-              <div className="flex gap-2 mb-2">
+            <div className="form-modal-field">
+              <div className="flex gap-2 mb-3">
                 <button
                   type="button"
                   onClick={() => setShowPreview(false)}
-                  className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                     !showPreview
                       ? 'bg-blue-600 text-white'
                       : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                   }`}
                 >
-                  Edit
+                  ✏️ Редактировать
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowPreview(true)}
-                  className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                     showPreview
                       ? 'bg-blue-600 text-white'
                       : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                   }`}
                 >
-                  Preview
+                  👁️ Предпросмотр
                 </button>
               </div>
 
@@ -251,12 +225,12 @@ export function SessionForm({ session, availablePCs, onSubmit, onClose }: Sessio
                   name="notes"
                   value={formData.notes || ''}
                   onChange={handleChange}
-                  placeholder="Session log and notes... supports Markdown"
-                  rows={5}
-                  className="w-full px-3 py-2 bg-slate-800 text-white rounded border border-slate-700 focus:outline-none focus:border-blue-500 transition-colors font-mono text-sm"
+                  placeholder="Лог сессии и заметки... поддерживает Markdown"
+                  rows={6}
+                  className="form-modal-textarea"
                 />
               ) : (
-                <div className="w-full px-3 py-2 bg-slate-800 rounded border border-slate-700 text-white overflow-y-auto max-h-48">
+                <div className="form-modal-input overflow-y-auto max-h-48">
                   <div className="prose prose-invert max-w-none text-sm">
                     <ReactMarkdown>{formData.notes || ''}</ReactMarkdown>
                   </div>
@@ -264,25 +238,25 @@ export function SessionForm({ session, availablePCs, onSubmit, onClose }: Sessio
               )}
             </div>
 
-            {/* FOOTER BUTTONS */}
-            <div className="flex gap-2 justify-end pt-4 border-t border-slate-700">
+            {/* Footer */}
+            <div className="form-modal-footer">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg font-medium transition-colors text-white"
+                className="form-modal-btn form-modal-btn-secondary"
               >
-                Cancel
+                Отмена
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors text-white"
+                className="form-modal-btn form-modal-btn-primary"
               >
-                {session ? 'Save' : 'Create'}
+                {session ? 'Сохранить' : 'Создать'}
               </button>
             </div>
           </form>
         </div>
       </div>
-    </>
+    </div>
   );
 }
