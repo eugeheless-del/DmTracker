@@ -5,13 +5,13 @@ import { CharacterCard } from '../components/CharacterCard';
 import { CharacterForm } from '../components/CharacterForm';
 import InventoryModal from '../components/InventoryModal';
 import { TelegramBroadcastModal } from '../components/TelegramBroadcastModal';
+import Locations from './Locations';
 import { PC, NPC } from '../types';
-
-type Tab = 'overview' | 'characters' | 'twists' | 'sessions';
 
 function Dashboard() {
   const [showTelegramModal, setShowTelegramModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'characters' | 'twists' | 'sessions' | 'locations'>('overview');
+  const isLocationsTab = activeTab === 'locations';
   const [showForm, setShowForm] = useState(false);
   const [formType, setFormType] = useState<'pc' | 'npc'>('pc');
   const [editingCharacter, setEditingCharacter] = useState<PC | NPC | undefined>();
@@ -127,6 +127,12 @@ function Dashboard() {
               className={`btn ${activeTab === 'sessions' ? 'btn--primary' : 'btn--ghost'}`}
             >
               📅 Сессии
+            </button>
+            <button
+              onClick={() => setActiveTab('locations')}
+              className={`btn ${isLocationsTab ? 'btn--primary' : 'btn--ghost'}`}
+            >
+              📍 Локации
             </button>
           </div>
         </div>
@@ -301,6 +307,13 @@ function Dashboard() {
                     </div>
                   ))
               )}
+            </div>
+          )}
+
+          {/* Locations Tab */}
+          {activeTab === 'locations' && (
+            <div style={{ display: 'grid', gap: 'var(--space-lg)' }}>
+              <Locations />
             </div>
           )}
         </div>

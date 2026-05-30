@@ -62,6 +62,8 @@ export function SearchBar({ onResultSelect }: SearchBarProps) {
         return '✨';
       case 'session':
         return '📅';
+      case 'locations':
+        return '📍';
       default:
         return '📌';
     }
@@ -77,6 +79,8 @@ export function SearchBar({ onResultSelect }: SearchBarProps) {
         return 'text-amber-400';
       case 'session':
         return 'text-cyan-400';
+      case 'locations':
+        return 'text-emerald-400';
       default:
         return 'text-slate-400';
     }

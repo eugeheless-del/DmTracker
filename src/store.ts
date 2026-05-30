@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { StoreState, NPC, PC, Twist, Session, SearchResult, InventoryItem, StatusEffect } from './types';
+import { StoreState, NPC, PC, Twist, Session, SearchResult, InventoryItem, StatusEffect, Location, LocationInput } from './types';
 import { TwistInput } from './types';
 import { supabase } from './supabaseClient';
 
@@ -24,6 +24,7 @@ const initialState = {
   pcs: [] as PC[],
   twists: [] as Twist[],
   sessions: [] as Session[],
+  locations: [] as Location[],
 };
 
 export const useStore = create<StoreState>((set, get) => {
@@ -464,22 +465,72 @@ export const useStore = create<StoreState>((set, get) => {
 
     getSessionById: (id) => get().sessions.find((session) => session.id === id),
 
+    // ===== Location Methods =====
+    addLocation: async (data: LocationInput) => {
+      try {
+        const user = await getCurrentUser();
+
+        const { error } = await supabase
+          .from('locations')
+          .insert([{ ...data, user_id: user.id, created_at: now() }]);
+
+        if (error) throw error;
+
+        await get().loadLocations();
+      } catch (error) {
+        console.warn('Failed to add Location:', error);
+        throw error;
+      }
+    },
+
+    deleteLocation: async (id) => {
+      try {
+        const { error } = await supabase
+          .from('locations')
+          .delete()
+          .eq('id', id);
+
+        if (error) throw error;
+
+        set((state) => ({ locations: state.locations.filter((location) => location.id !== id) }));
+      } catch (error) {
+        console.warn('Failed to delete Location:', error);
+        throw error;
+      }
+    },
+
+    loadLocations: async () => {
+      try {
+        await getCurrentUser();
+
+        const { data, error } = await supabase.from('locations').select('*').order('created_at', { ascending: false });
+        if (error) throw error;
+
+        set({ locations: (data || []) as Location[] });
+      } catch (error) {
+        console.warn('Failed to load Locations:', error);
+        throw error;
+      }
+    },
+
     // ===== Utility Methods =====
     loadFromSupabase: async () => {
       try {
-        const [pcsRes, npcsRes, twistsRes, sessionsRes, inventoryRes, statusesRes] = await Promise.all([
+        const [pcsRes, npcsRes, twistsRes, sessionsRes, inventoryRes, statusesRes, locationsRes] = await Promise.all([
           supabase.from('pcs').select('*'),
           supabase.from('npcs').select('*'),
           supabase.from('twists').select('*'),
           supabase.from('sessions').select('*'),
           supabase.from('inventory').select('*'),
           supabase.from('status_effects').select('*'),
+          supabase.from('locations').select('*'),
         ]);
 
         if (pcsRes.error) throw pcsRes.error;
         if (npcsRes.error) throw npcsRes.error;
         if (twistsRes.error) throw twistsRes.error;
         if (sessionsRes.error) throw sessionsRes.error;
+        if (locationsRes.error) throw locationsRes.error;
         // Note: inventoryRes.error and statusesRes.error are optional - tables might not exist yet
 
         // Build inventory map: pc_id -> inventory items
@@ -516,6 +567,7 @@ export const useStore = create<StoreState>((set, get) => {
           npcs: (npcsRes.data || []) as NPC[],
           twists: (twistsRes.data || []) as Twist[],
           sessions: (sessionsRes.data || []) as Session[],
+          locations: (locationsRes.data || []) as Location[],
         });
       } catch (error) {
         console.warn('Failed to load data from Supabase:', error);
@@ -529,6 +581,7 @@ export const useStore = create<StoreState>((set, get) => {
           supabase.from('npcs').delete().neq('id', ''),
           supabase.from('twists').delete().neq('id', ''),
           supabase.from('sessions').delete().neq('id', ''),
+          supabase.from('locations').delete().neq('id', ''),
         ]);
 
         set(initialState);
@@ -631,6 +684,22 @@ export const useStore = create<StoreState>((set, get) => {
             name: session.name,
             type: 'session',
             description: session.description || 'Session',
+            matchedField: 'name',
+          });
+        }
+      });
+
+      // Search Locations
+      state.locations.forEach((location) => {
+        if (
+          location.name.toLowerCase().includes(normalizedQuery) ||
+          location.description?.toLowerCase().includes(normalizedQuery)
+        ) {
+          results.push({
+            id: location.id,
+            name: location.name,
+            type: 'locations',
+            description: location.description || 'Location',
             matchedField: 'name',
           });
         }

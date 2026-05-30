@@ -2,12 +2,13 @@ import { useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import Dashboard from '../pages/Dashboard'
 import Characters from '../pages/Characters'
+import Locations from '../pages/Locations'
 import Twists from '../pages/Twists'
 import Sessions from '../pages/Sessions'
 import { SearchBar } from './SearchBar'
 import { SearchResult } from '../types'
 
-type Screen = 'dashboard' | 'characters' | 'twists' | 'sessions'
+type Screen = 'dashboard' | 'characters' | 'locations' | 'twists' | 'sessions'
 
 type LayoutProps = {
   session: Session
@@ -19,10 +20,11 @@ function Layout({ session, onSignOut }: LayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const navItems = [
-    { id: 'dashboard', label: 'Общее', icon: '📊' },
-    { id: 'characters', label: 'Персонажи', icon: '🧙' },
-    { id: 'twists', label: 'Твисты', icon: '✨' },
-    { id: 'sessions', label: 'Сессии', icon: '📅' },
+    { id: 'dashboard', label: 'Общее', icon: '📊', route: '/dashboard' },
+    { id: 'characters', label: 'Персонажи', icon: '🧙', route: '/characters' },
+    { id: 'locations', label: 'Локации', icon: '📍', route: '/locations' },
+    { id: 'twists', label: 'Твисты', icon: '✨', route: '/twists' },
+    { id: 'sessions', label: 'Сессии', icon: '📅', route: '/sessions' },
   ] as const
 
   // Handle search result selection - navigate to appropriate page
@@ -38,6 +40,9 @@ function Layout({ session, onSignOut }: LayoutProps) {
       case 'session':
         setCurrentScreen('sessions')
         break
+      case 'locations':
+        setCurrentScreen('locations')
+        break
       default:
         break
     }
@@ -47,14 +52,16 @@ function Layout({ session, onSignOut }: LayoutProps) {
     switch (currentScreen) {
       case 'dashboard':
         return <Dashboard />
-       case 'characters':
+      case 'characters':
         return <Characters />
+      case 'locations':
+        return <Locations />
       case 'twists':
         return <Twists />
       case 'sessions':
         return <Sessions />
       default:
-        return <Dashboard /> 
+        return <Dashboard />
     }
   }
 
@@ -152,7 +159,7 @@ function Layout({ session, onSignOut }: LayoutProps) {
       </div>
 
       {/* Mobile Bottom Tab Bar */}
-      <nav className="md:hidden bg-slate-900 border-t border-slate-800 flex">
+      <nav className="flex md:!hidden bg-slate-900 border-t border-slate-800">
         {navItems.map((item) => (
           <button
             key={item.id}

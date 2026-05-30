@@ -10,7 +10,7 @@ export interface BaseEntity {
 export interface SearchResult {
   id: string;
   name: string;
-  type: 'pc' | 'npc' | 'twist' | 'session';
+  type: 'pc' | 'npc' | 'twist' | 'session' | 'locations';
   description?: string;
   matchedField?: 'name' | 'role' | 'class' | 'race' | 'type' | 'description';
 }
@@ -86,6 +86,15 @@ export interface Session extends BaseEntity {
 // Input type for Session creation/editing
 export type SessionInput = Omit<Session, 'id' | 'created_at' | 'updated_at'>;
 
+export interface Location {
+  id: string;
+  name: string;
+  description?: string;
+  created_at?: string;
+}
+
+export type LocationInput = Omit<Location, 'id' | 'created_at'>;
+
 // Quirky NPC - generator for "Пьяный Трактирщик" (The Drunk Innkeeper)
 export interface QuirkyNPC {
   id: string;
@@ -152,6 +161,12 @@ export interface StoreState {
   updateSession: (id: string, data: Partial<Omit<Session, 'id' | 'created_at'>>) => Promise<void>;
   deleteSession: (id: string) => Promise<void>;
   getSessionById: (id: string) => Session | undefined;
+
+  // Location actions
+  locations: Location[];
+  addLocation: (location: LocationInput) => Promise<void>;
+  deleteLocation: (id: string) => Promise<void>;
+  loadLocations: () => Promise<void>;
 
   // Utility
   loadFromSupabase: () => Promise<void>;
