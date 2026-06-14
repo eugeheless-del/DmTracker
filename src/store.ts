@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { StoreState, NPC, PC, Twist, Session, SearchResult, InventoryItem, StatusEffect, Location, LocationInput } from './types';
+import { StoreState, NPC, PC, Twist, Session, SearchResult, InventoryItem, StatusEffect, Location, LocationInput, NPCTwistConnection, NPCConnectionType } from './types';
 import { TwistInput } from './types';
 import { supabase } from './supabaseClient';
 
@@ -36,6 +36,7 @@ const initialState = {
   pcs: [] as PC[],
   twists: [] as Twist[],
   sessions: [] as Session[],
+  npcTwistConnections: [] as NPCTwistConnection[],
   locations: [] as Location[],
   showHotkeysHelp: false,
   showCharacterForm: false,
@@ -53,17 +54,21 @@ export const useStore = create<StoreState>((set, get) => {
       try {
         const user = await getCurrentUser();
 
-        const { error } = await supabase
+        const { data: insertedNpc, error } = await supabase
           .from('npcs')
-          .insert([{ ...data, user_id: user.id, created_at: now(), updated_at: now() }]);
+          .insert([{ ...data, user_id: user.id, created_at: now(), updated_at: now() }])
+          .select('*')
+          .single();
 
         if (error) throw error;
+        if (!insertedNpc) throw new Error('NPC creation returned no record');
 
         // Refresh data after insert
         const { data: npcs, error: fetchError } = await supabase.from('npcs').select('*');
         if (fetchError) throw fetchError;
 
         set({ npcs: npcs as NPC[] });
+        return insertedNpc as NPC;
       } catch (error) {
         console.warn('Failed to add NPC:', error);
         throw error;
@@ -114,6 +119,167 @@ export const useStore = create<StoreState>((set, get) => {
     },
 
     getNpcById: (id) => get().npcs.find((npc) => npc.id === id),
+
+    addNPCTwistConnection: async (
+      npcId: string,
+      twistId: string,
+      connectionType: NPCConnectionType,
+      description?: string
+    ) => {
+      try {
+        const connectionId = crypto.randomUUID();
+        const payload = {
+          id: connectionId,
+          npc_id: npcId,
+          twist_id: twistId,
+          connection_type: connectionType,
+          description,
+          created_at: now(),
+        };
+
+        const { data, error } = await supabase
+          .from('npc_twist_connections')
+          .insert([payload])
+          .select('*')
+          .single();
+
+        if (error) throw error;
+
+        const newConnection = data as NPCTwistConnection;
+
+        set((state) => ({
+          npcTwistConnections: [...state.npcTwistConnections, newConnection],
+          npcs: state.npcs.map((npc) =>
+            npc.id === npcId
+              ? {
+                  ...npc,
+                  twist_connections: [...(npc.twist_connections || []), newConnection],
+                }
+              : npc
+          ),
+          twists: state.twists.map((twist) =>
+            twist.id === twistId
+              ? {
+                  ...twist,
+                  connected_npcs: [...(twist.connected_npcs || []), newConnection],
+                }
+              : twist
+          ),
+        }));
+
+        return newConnection;
+      } catch (error) {
+        console.warn('Failed to add NPC-Twist connection:', error);
+        throw error;
+      }
+    },
+
+    removeNPCTwistConnection: async (connectionId: string) => {
+      try {
+        const { error } = await supabase
+          .from('npc_twist_connections')
+          .delete()
+          .eq('id', connectionId);
+
+        if (error) throw error;
+
+        set((state) => ({
+          npcTwistConnections: state.npcTwistConnections.filter((connection) => connection.id !== connectionId),
+          npcs: state.npcs.map((npc) => ({
+            ...npc,
+            twist_connections: (npc.twist_connections || []).filter((connection) => connection.id !== connectionId),
+          })),
+          twists: state.twists.map((twist) => ({
+            ...twist,
+            connected_npcs: (twist.connected_npcs || []).filter((connection) => connection.id !== connectionId),
+          })),
+        }));
+      } catch (error) {
+        console.warn('Failed to remove NPC-Twist connection:', error);
+        throw error;
+      }
+    },
+
+    loadTwistConnections: async (twistId: string) => {
+      try {
+        const { data, error } = await supabase
+          .from('npc_twist_connections')
+          .select('*, npc: npcs(*)')
+          .eq('twist_id', twistId);
+
+        if (error) throw error;
+
+        return (data || []) as NPCTwistConnection[];
+      } catch (error) {
+        console.warn('Failed to load twist connections:', error);
+        throw error;
+      }
+    },
+
+    loadNPCConnections: async (npcId: string) => {
+      try {
+        const { data, error } = await supabase
+          .from('npc_twist_connections')
+          .select('*, twist: twists(*)')
+          .eq('npc_id', npcId);
+
+        if (error) throw error;
+
+        return (data || []) as NPCTwistConnection[];
+      } catch (error) {
+        console.warn('Failed to load NPC connections:', error);
+        throw error;
+      }
+    },
+
+    addNPCItem: async (npcId: string, itemName: string, description?: string) => {
+      try {
+        const payload = {
+          npc_id: npcId,
+          item_name: itemName,
+          description,
+          created_at: now(),
+        };
+
+        const { error } = await supabase
+          .from('npc_items')
+          .insert([payload])
+          .select('*')
+          .single();
+
+        if (error) {
+          const errorMessage = (error.message || '').toLowerCase();
+          if (errorMessage.includes('npc_items') && errorMessage.includes('does not exist')) {
+            set((state) => ({
+              npcs: state.npcs.map((npc) =>
+                npc.id === npcId
+                  ? {
+                      ...npc,
+                      owned_items: [...(npc.owned_items || []), itemName],
+                    }
+                  : npc
+              ),
+            }));
+            return;
+          }
+          throw error;
+        }
+
+        set((state) => ({
+          npcs: state.npcs.map((npc) =>
+            npc.id === npcId
+              ? {
+                  ...npc,
+                  owned_items: [...(npc.owned_items || []), itemName],
+                }
+              : npc
+          ),
+        }));
+      } catch (error) {
+        console.warn('Failed to add NPC item:', error);
+        throw error;
+      }
+    },
 
     // ===== PC Methods =====
     addPc: async (data) => {
@@ -645,7 +811,7 @@ export const useStore = create<StoreState>((set, get) => {
     // ===== Utility Methods =====
     loadFromSupabase: async () => {
       try {
-        const [pcsRes, npcsRes, twistsRes, sessionsRes, inventoryRes, statusesRes, locationsRes] = await Promise.all([
+        const [pcsRes, npcsRes, twistsRes, sessionsRes, inventoryRes, statusesRes, locationsRes, connectionsRes] = await Promise.all([
           supabase.from('pcs').select('*'),
           supabase.from('npcs').select('*'),
           supabase.from('twists').select('*'),
@@ -653,6 +819,7 @@ export const useStore = create<StoreState>((set, get) => {
           supabase.from('inventory').select('*'),
           supabase.from('status_effects').select('*'),
           supabase.from('locations').select('*'),
+          supabase.from('npc_twist_connections').select('*'),
         ]);
 
         if (pcsRes.error) throw pcsRes.error;
@@ -698,6 +865,7 @@ export const useStore = create<StoreState>((set, get) => {
             .map((twist) => ensureTwistReadyState(twist as Twist)) as Twist[],
           sessions: (sessionsRes.data || []) as Session[],
           locations: (locationsRes.data || []) as Location[],
+          npcTwistConnections: (connectionsRes.data || []) as NPCTwistConnection[],
         });
       } catch (error) {
         console.warn('Failed to load data from Supabase:', error);
@@ -712,6 +880,7 @@ export const useStore = create<StoreState>((set, get) => {
           supabase.from('twists').delete().neq('id', ''),
           supabase.from('sessions').delete().neq('id', ''),
           supabase.from('locations').delete().neq('id', ''),
+          supabase.from('npc_twist_connections').delete().neq('id', ''),
         ]);
 
         set(initialState);

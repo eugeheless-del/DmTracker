@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useStore } from '../store';
-import { Twist } from '../types';
+import type { NPCTwistConnection, Twist } from '../types';
 
 interface TwistCardProps {
   twist: Twist;
@@ -25,7 +25,11 @@ export function TwistCard({
   onDelete,
 }: TwistCardProps) {
   const toggleCondition = useStore((state) => state.toggleCondition);
+  const loadTwistConnections = useStore((state) => state.loadTwistConnections);
+  const removeNPCTwistConnection = useStore((state) => state.removeNPCTwistConnection);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [connections, setConnections] = useState<NPCTwistConnection[]>([]);
+  const [loadingConnections, setLoadingConnections] = useState(true);
   const conditions = twist.conditions || [];
   const completedConditions = conditions.filter((condition) => condition.isMet).length;
   const isReady = Boolean(twist.isReady);
@@ -67,6 +71,23 @@ export function TwistCard({
   const getTwistTypeLabel = (type?: string): string => {
     return twistTypeLabels[type || ''] || type || 'Неизвестный тип';
   };
+
+  // Load twist connections from store
+  useEffect(() => {
+    const loadConnections = async () => {
+      setLoadingConnections(true);
+      try {
+        const data = await loadTwistConnections(twist.id);
+        setConnections(data);
+      } catch (error) {
+        console.warn('Failed to load twist connections:', error);
+      } finally {
+        setLoadingConnections(false);
+      }
+    };
+
+    loadConnections();
+  }, [twist.id, loadTwistConnections]);
 
   // Handle status change with notification
   const handleStatusChange = (newStatus: Twist['status']) => {
@@ -234,6 +255,73 @@ export function TwistCard({
                 Завершён
               </button>
             </div>
+          </div>
+
+          <div className="bg-slate-800/50 rounded-lg p-4 mb-6 border border-slate-700">
+            <h3 className="text-lg text-blue-300 mb-3 flex items-center gap-2">
+              <span>👥</span>
+              Замешанные НПС ({connections.length})
+            </h3>
+
+            {loadingConnections ? (
+              <p className="text-slate-400">Загрузка...</p>
+            ) : connections.length === 0 ? (
+              <p className="text-slate-500 italic">Нет связанных НПС</p>
+            ) : (
+              <div className="space-y-2">
+                {connections.map((connection) => (
+                  <div
+                    key={connection.id}
+                    className="flex items-start justify-between bg-slate-900/50 p-3 rounded-lg hover:bg-slate-900 transition-colors"
+                  >
+                    <div className="flex items-start gap-3 flex-1">
+                      <span className="text-2xl">👤</span>
+                      <div className="flex-1">
+                        <div className="text-white font-medium text-base">
+                          {connection.npc?.name}
+                        </div>
+                        <div className="text-sm text-slate-400 mt-1">
+                          {connection.npc?.role && <span>{connection.npc.role}</span>}
+                          {connection.npc?.location && (
+                            <span className="mx-2">•</span>
+                          )}
+                          {connection.npc?.location && (
+                            <span>📍 {connection.npc.location}</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-xs px-2 py-1 rounded bg-emerald-900/30 text-emerald-300 border border-emerald-700/50">
+                            {connection.connection_type === 'involved' && 'Участвует'}
+                            {connection.connection_type === 'victim' && 'Жертва'}
+                            {connection.connection_type === 'culprit' && 'Виновник'}
+                            {connection.connection_type === 'witness' && 'Свидетель'}
+                          </span>
+                          {connection.description && (
+                            <span className="text-xs text-slate-400">
+                              {connection.description}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await removeNPCTwistConnection(connection.id);
+                        setConnections((prev) => prev.filter((c) => c.id !== connection.id));
+                      }}
+                      className="text-slate-500 hover:text-red-400 transition-colors p-1"
+                      title="Удалить связь"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Edit and Delete buttons */}

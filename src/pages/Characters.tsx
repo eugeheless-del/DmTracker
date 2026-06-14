@@ -32,7 +32,7 @@ function Characters() {
   };
 
   // Handle character submit
-  const handleCharacterSubmit = async (data: any) => {
+  const handleCharacterSubmit = async (data: any): Promise<any> => {
     try {
       if (editingCharacter) {
         if (characterFormType === 'pc') {
@@ -40,18 +40,25 @@ function Characters() {
         } else {
           await updateNpc(editingCharacter.id, data);
         }
-      } else {
-        if (characterFormType === 'pc') {
-          await addPc(data);
-        } else {
-          await addNpc(data);
-        }
+        closeCharacterForm();
+        setEditingCharacter(undefined);
+        return undefined;
       }
+
+      if (characterFormType === 'pc') {
+        await addPc(data);
+        closeCharacterForm();
+        return undefined;
+      }
+
+      const createdNpc = await addNpc(data);
       closeCharacterForm();
       setEditingCharacter(undefined);
+      return createdNpc;
     } catch (error) {
       alert('Ошибка при сохранении персонажа. Попробуйте снова.');
       console.warn('Failed to submit character:', error);
+      return undefined;
     }
   };
 

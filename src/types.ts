@@ -29,6 +29,18 @@ export interface TwistCondition {
   isMet: boolean;
 }
 
+export type NPCConnectionType = 'involved' | 'victim' | 'culprit' | 'witness';
+
+export interface NPCTwistConnection {
+  id: string;
+  npc_id: string;
+  twist_id: string;
+  connection_type: NPCConnectionType;
+  description?: string;
+  created_at: string;
+  npc?: NPC; // Для удобства при загрузке с JOIN
+}
+
 // Non-Player Character (NPC)
 export interface NPC extends BaseEntity {
   role?: string;
@@ -36,6 +48,8 @@ export interface NPC extends BaseEntity {
   notes?: string;
   location?: string;
   status?: 'alive' | 'dead' | 'missing';
+  twist_connections?: NPCTwistConnection[];
+  owned_items?: string[];
 }
 
 // Inventory Item for PC
@@ -80,6 +94,7 @@ export interface Twist {
   status?: 'hidden' | 'ready' | 'revealed' | 'completed'; // twist status
   conditions?: TwistCondition[];
   isReady?: boolean;
+  connected_npcs?: NPCTwistConnection[];
   created_at: string;
   updated_at: string;
 }
@@ -141,12 +156,23 @@ export interface StoreState {
   pcs: PC[];
   twists: Twist[];
   sessions: Session[];
+  npcTwistConnections: NPCTwistConnection[];
 
   // NPC actions
-  addNpc: (npc: Omit<NPC, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  addNpc: (npc: Omit<NPC, 'id' | 'created_at' | 'updated_at'>) => Promise<NPC>;
   updateNpc: (id: string, data: Partial<Omit<NPC, 'id' | 'created_at'>>) => Promise<void>;
   deleteNpc: (id: string) => Promise<void>;
   getNpcById: (id: string) => NPC | undefined;
+  addNPCTwistConnection: (
+    npcId: string,
+    twistId: string,
+    connectionType: NPCConnectionType,
+    description?: string
+  ) => Promise<NPCTwistConnection>;
+  removeNPCTwistConnection: (connectionId: string) => Promise<void>;
+  loadTwistConnections: (twistId: string) => Promise<NPCTwistConnection[]>;
+  loadNPCConnections: (npcId: string) => Promise<NPCTwistConnection[]>;
+  addNPCItem: (npcId: string, itemName: string, description?: string) => Promise<void>;
 
   // PC actions
   addPc: (pc: Omit<PC, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;

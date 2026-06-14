@@ -67,59 +67,12 @@ export function CharacterCard({ character, type, onEdit, onDelete, onInventory }
           </div>
         </div>
 
-        <div className="character-card__meta">
-          {type === 'pc' && (
-            <>
-              {pc?.player_name && (
-                <div className="character-card__detail">👤 Игрок: <span>{pc.player_name}</span></div>
-              )}
-              <div className="character-card__detail">❤️ HP: <span>
-                {isEditingHp ? (
-                  <input
-                    type="number"
-                    value={hpInput}
-                    onChange={handleHpChange}
-                    onBlur={handleHpSave}
-                    onKeyDown={handleHpKeyDown}
-                    autoFocus
-                    min="0"
-                    className="character-card__hp-input"
-                  />
-                ) : (
-                  <span
-                    onClick={() => {
-                      setIsEditingHp(true);
-                      setHpInput(String(pc?.hp || 0));
-                    }}
-                    className="character-card__hp-value"
-                  >
-                    {pc?.hp || 0}
-                  </span>
-                )}
-              </span></div>
-              {typeof pc?.ac === 'number' && (
-                <div className="character-card__detail">🛡️ AC: <span>{pc.ac}</span></div>
-              )}
-            </>
-          )}
-
-          {type === 'npc' && (
-            <>
-              {npc?.location && (
-                <div className="character-card__detail">📍 Локация: <span>{npc.location}</span></div>
-              )}
-              {npc?.status && (
-                <div className="character-card__detail">⚡ Статус: <span className={
-                  npc.status === 'alive' ? 'text-emerald-300' :
-                  npc.status === 'dead' ? 'text-rose-300' :
-                  'text-amber-300'
-                }>
-                  {npc.status === 'alive' ? 'Жив' : npc.status === 'dead' ? 'Мертв' : 'Пропал'}
-                </span></div>
-              )}
-            </>
-          )}
-        </div>
+        {character.notes && (
+          <div className="character-card__notes">
+            <div className="character-card__notes-label">📝 Заметки</div>
+            <p className="character-card__notes-text">{character.notes}</p>
+          </div>
+        )}
 
         <div className="character-card__actions">
           {type === 'pc' && (
