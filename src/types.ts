@@ -39,6 +39,7 @@ export interface NPCTwistConnection {
   description?: string;
   created_at: string;
   npc?: NPC; // Для удобства при загрузке с JOIN
+  twist?: Twist;
 }
 
 // Non-Player Character (NPC)
@@ -120,6 +121,21 @@ export interface Location {
 }
 
 export type LocationInput = Omit<Location, 'id' | 'created_at'>;
+
+export type EventType = 'quest' | 'combat' | 'travel' | 'downtime' | 'npc' | 'other';
+
+export interface TimelineEvent {
+  id: string;
+  user_id: string;
+  title: string;
+  description?: string;
+  event_date: string; // YYYY-MM-DD
+  event_type: EventType;
+  completed: boolean;
+  npc_ids: string[];
+  created_at?: string;
+  updated_at?: string;
+}
 
 export type CharacterFormType = 'pc' | 'npc';
 
@@ -209,6 +225,26 @@ export interface StoreState {
   addLocation: (location: LocationInput) => Promise<void>;
   deleteLocation: (id: string) => Promise<void>;
   loadLocations: () => Promise<void>;
+
+  // Timeline event actions
+  events: TimelineEvent[];
+  selectedDate: string; // YYYY-MM-DD
+  calendarMonth: number; // 0-11
+  calendarYear: number;
+  eventSearchQuery: string;
+  isEventModalOpen: boolean;
+  editingEvent: TimelineEvent | null;
+  timelineEventsLoaded: boolean;
+  fetchEvents: () => Promise<void>;
+  addEvent: (eventData: Omit<TimelineEvent, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => Promise<TimelineEvent>;
+  updateEvent: (id: string, data: Partial<Omit<TimelineEvent, 'id' | 'created_at' | 'updated_at' | 'user_id'>>) => Promise<void>;
+  deleteEvent: (id: string) => Promise<void>;
+  setSelectedDate: (date: string) => void;
+  changeCalendarMonth: (offset: -1 | 1) => void;
+  setEventSearchQuery: (query: string) => void;
+  openEventModal: (event?: TimelineEvent) => void;
+  closeEventModal: () => void;
+  filteredEventsByDate: () => TimelineEvent[];
 
   // Global hotkey UI state
   showHotkeysHelp: boolean;

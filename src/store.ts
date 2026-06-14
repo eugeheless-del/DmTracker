@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { StoreState, NPC, PC, Twist, Session, SearchResult, InventoryItem, StatusEffect, Location, LocationInput, NPCTwistConnection, NPCConnectionType } from './types';
+import { StoreState, NPC, PC, Twist, Session, SearchResult, InventoryItem, StatusEffect, Location, LocationInput, NPCTwistConnection, NPCConnectionType, TimelineEvent } from './types';
 import { TwistInput } from './types';
 import { supabase } from './supabaseClient';
 
@@ -36,8 +36,16 @@ const initialState = {
   pcs: [] as PC[],
   twists: [] as Twist[],
   sessions: [] as Session[],
+  events: [] as TimelineEvent[],
+  timelineEventsLoaded: false,
   npcTwistConnections: [] as NPCTwistConnection[],
   locations: [] as Location[],
+  selectedDate: new Date().toISOString().slice(0, 10),
+  calendarMonth: new Date().getMonth(),
+  calendarYear: new Date().getFullYear(),
+  eventSearchQuery: '',
+  isEventModalOpen: false,
+  editingEvent: null as TimelineEvent | null,
   showHotkeysHelp: false,
   showCharacterForm: false,
   characterFormType: 'pc' as 'pc' | 'npc',
@@ -48,6 +56,145 @@ const initialState = {
 export const useStore = create<StoreState>((set, get) => {
   return {
     ...initialState,
+
+    // ===== Calendar Event State =====
+    fetchEvents: async () => {
+      try {
+        const user = await getCurrentUser();
+
+        const { data, error } = await supabase
+          .from('timeline_events')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('event_date', { ascending: false });
+
+        if (error) throw error;
+
+        set({ events: (data || []) as TimelineEvent[], timelineEventsLoaded: true });
+      } catch (error) {
+        console.warn('Failed to fetch timeline events:', error);
+        throw error;
+      }
+    },
+
+    addEvent: async (eventData: Omit<TimelineEvent, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => {
+      try {
+        const user = await getCurrentUser();
+
+        const { data: insertedEvent, error } = await supabase
+          .from('timeline_events')
+          .insert({
+            ...eventData,
+            user_id: user.id,
+          })
+          .select('*')
+          .single();
+
+        if (error) throw error;
+        if (!insertedEvent) throw new Error('Event creation returned no record');
+
+        set((state) => ({
+          ...state,
+          events: [...state.events, insertedEvent as TimelineEvent],
+        }));
+
+        return insertedEvent as TimelineEvent;
+      } catch (error) {
+        console.warn('Failed to add timeline event:', error);
+        throw error;
+      }
+    },
+
+    updateEvent: async (id: string, data: Partial<Omit<TimelineEvent, 'id' | 'created_at' | 'updated_at' | 'user_id'>>) => {
+      try {
+        const { data: updatedEvent, error } = await supabase
+          .from('timeline_events')
+          .update({ ...data, updated_at: now() })
+          .eq('id', id)
+          .select('*')
+          .single();
+
+        if (error) throw error;
+        if (!updatedEvent) throw new Error('Event update returned no record');
+
+        set((state) => ({
+          ...state,
+          events: state.events.map((event) =>
+            event.id === id ? (updatedEvent as TimelineEvent) : event
+          ),
+        }));
+      } catch (error) {
+        console.warn('Failed to update timeline event:', error);
+        throw error;
+      }
+    },
+
+    deleteEvent: async (id: string) => {
+      try {
+        const { error } = await supabase
+          .from('timeline_events')
+          .delete()
+          .eq('id', id);
+
+        if (error) throw error;
+
+        set((state) => ({
+          ...state,
+          events: state.events.filter((event) => event.id !== id),
+        }));
+      } catch (error) {
+        console.warn('Failed to delete timeline event:', error);
+        throw error;
+      }
+    },
+
+    setSelectedDate: (date: string) => set({ selectedDate: date }),
+
+    changeCalendarMonth: (offset: -1 | 1) =>
+      set((state) => {
+        let month = state.calendarMonth + offset;
+        let year = state.calendarYear;
+
+        if (month > 11) {
+          month = 0;
+          year += 1;
+        }
+
+        if (month < 0) {
+          month = 11;
+          year -= 1;
+        }
+
+        return { calendarMonth: month, calendarYear: year };
+      }),
+
+    setEventSearchQuery: (query: string) => set({ eventSearchQuery: query }),
+
+    openEventModal: (event?: TimelineEvent) =>
+      set({ isEventModalOpen: true, editingEvent: event ?? null }),
+
+    closeEventModal: () =>
+      set({ isEventModalOpen: false, editingEvent: null }),
+
+    filteredEventsByDate: (): TimelineEvent[] => {
+      const { events, selectedDate, eventSearchQuery } = get();
+      const normalizedQuery = eventSearchQuery.trim().toLowerCase();
+
+      return events.filter((event) => {
+        const matchesDate = event.event_date === selectedDate;
+        if (!matchesDate) return false;
+
+        if (!normalizedQuery) return true;
+
+        const title = event.title?.toLowerCase() || '';
+        const description = event.description?.toLowerCase() || '';
+
+        const matchesSearch =
+          title.includes(normalizedQuery) || description.includes(normalizedQuery);
+
+        return matchesDate && matchesSearch;
+      });
+    },
 
     // ===== NPC Methods =====
     addNpc: async (data) => {

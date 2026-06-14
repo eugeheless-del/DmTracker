@@ -66,6 +66,16 @@
   .card { padding: 0.7rem; }
 }
 
+.zoom-95 {
+  transform: scale(0.95);
+  transform-origin: top left;
+}
+
+.zoom-90 {
+  transform: scale(0.9);
+  transform-origin: top left;
+}
+
 /* Компоненты Tailwind */
 /* @layer components {
   .grid-container {

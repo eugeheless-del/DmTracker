@@ -5,13 +5,14 @@ import Characters from '../pages/Characters'
 import Locations from '../pages/Locations'
 import Twists from '../pages/Twists'
 import Sessions from '../pages/Sessions'
+import CampaignTimeline from '../pages/CampaignTimeline'
 import { SearchBar } from './SearchBar'
 import HotkeysHelp from './HotkeysHelp'
 import { useGlobalHotkeys } from '../hooks/useGlobalHotkeys'
 import { useStore } from '../store'
 import { SearchResult } from '../types'
 
-type Screen = 'dashboard' | 'characters' | 'locations' | 'twists' | 'sessions'
+type Screen = 'dashboard' | 'characters' | 'locations' | 'twists' | 'sessions' | 'timeline'
 
 type LayoutProps = {
   session: Session
@@ -29,6 +30,7 @@ function Layout({ session, onSignOut }: LayoutProps) {
 
   const navItems = [
     { id: 'dashboard', label: 'Общее', icon: '📊', route: '/dashboard' },
+    { id: 'timeline', label: 'Хронология', icon: '📅', route: '/timeline' },
     { id: 'characters', label: 'Персонажи', icon: '🧙', route: '/characters' },
     { id: 'locations', label: 'Локации', icon: '📍', route: '/locations' },
     { id: 'twists', label: 'Твисты', icon: '✨', route: '/twists' },
@@ -60,6 +62,8 @@ function Layout({ session, onSignOut }: LayoutProps) {
     switch (currentScreen) {
       case 'dashboard':
         return <Dashboard />
+      case 'timeline':
+        return <CampaignTimeline />
       case 'characters':
         return <Characters />
       case 'locations':

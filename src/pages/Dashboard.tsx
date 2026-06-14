@@ -6,11 +6,12 @@ import { CharacterForm } from '../components/CharacterForm';
 import InventoryModal from '../components/InventoryModal';
 import { TelegramBroadcastModal } from '../components/TelegramBroadcastModal';
 import Locations from './Locations';
+import CampaignTimeline from './CampaignTimeline';
 import { PC, NPC } from '../types';
 
 function Dashboard() {
   const [showTelegramModal, setShowTelegramModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'characters' | 'twists' | 'sessions' | 'locations'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'characters' | 'twists' | 'sessions' | 'locations' | 'timeline'>('overview');
   const isLocationsTab = activeTab === 'locations';
   const [showForm, setShowForm] = useState(false);
   const [formType, setFormType] = useState<'pc' | 'npc'>('pc');
@@ -109,6 +110,12 @@ function Dashboard() {
               className={`btn ${activeTab === 'overview' ? 'btn--primary' : 'btn--ghost'}`}
             >
               📊 Общее
+            </button>
+            <button
+              onClick={() => setActiveTab('timeline')}
+              className={`btn ${activeTab === 'timeline' ? 'btn--primary' : 'btn--ghost'}`}
+            >
+              📅 Хронология
             </button>
             <button
               onClick={() => setActiveTab('characters')}
@@ -228,6 +235,12 @@ function Dashboard() {
           )}
 
           {/* Characters Tab */}
+          {activeTab === 'timeline' && (
+            <div>
+              <CampaignTimeline />
+            </div>
+          )}
+
           {activeTab === 'characters' && (
             <div>
               {pcs.length > 0 && (
