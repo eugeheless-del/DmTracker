@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useStore } from '../store';
 import { Twist } from '../types';
 
 interface TwistCardProps {
@@ -23,7 +24,12 @@ export function TwistCard({
   onEdit,
   onDelete,
 }: TwistCardProps) {
+  const toggleCondition = useStore((state) => state.toggleCondition);
   const [isExpanded, setIsExpanded] = useState(false);
+  const conditions = twist.conditions || [];
+  const completedConditions = conditions.filter((condition) => condition.isMet).length;
+  const isReady = Boolean(twist.isReady);
+  const progressPercent = conditions.length ? Math.round((completedConditions / conditions.length) * 100) : 0;
 
   // Get status badge color
   const getStatusColor = (status?: string): string => {
@@ -74,7 +80,7 @@ export function TwistCard({
   };
 
   return (
-    <div className="bg-slate-800 rounded-lg shadow-lg border border-slate-700 hover:border-slate-600 transition-all duration-300 overflow-hidden">
+    <div className={`bg-slate-800 rounded-lg shadow-lg border transition-all duration-300 overflow-hidden ${isReady ? 'border-red-500 bg-red-900/20 ring-2 ring-red-500 animate-pulse' : 'border-slate-700 hover:border-slate-600'}`}>
       {/* Collapsed view - always visible */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
@@ -97,6 +103,36 @@ export function TwistCard({
               <p className="text-sm text-slate-400 mt-2 truncate">
                 ⚡ Триггер: {twist.trigger_condition}
               </p>
+            )}
+
+            {isReady && (
+              <p className="mt-2 text-sm font-semibold text-red-200">⚡ ГОТОВ К ЗАПУСКУ</p>
+            )}
+
+            {conditions.length > 0 && (
+              <div className="mt-3 space-y-1">
+                {conditions.slice(0, 3).map((condition) => (
+                  <div
+                    key={condition.id}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      toggleCondition(twist.id, condition.id);
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    className={`flex items-center justify-between rounded-md border px-2 py-1 transition-colors ${condition.isMet ? 'bg-emerald-900/30 border-emerald-500/50 text-emerald-300 hover:bg-emerald-900/40' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'} cursor-pointer`}
+                  >
+                    <span className="flex items-center gap-2 text-xs leading-none">
+                      <span className="text-xs">{condition.isMet ? '✅' : '☐'}</span>
+                      <span className="truncate">{condition.label}</span>
+                    </span>
+                    <span className="text-[11px] uppercase tracking-[0.2em] text-slate-500">{condition.type}</span>
+                  </div>
+                ))}
+                {conditions.length > 3 && (
+                  <p className="text-xs text-slate-500">+{conditions.length - 3} ещё</p>
+                )}
+              </div>
             )}
           </div>
 
@@ -135,6 +171,29 @@ export function TwistCard({
             <div>
               <p className="text-xs font-semibold text-slate-400 mb-1">ТРИГГЕР</p>
               <p className="text-sm text-slate-300">{twist.trigger_condition}</p>
+            </div>
+          )}
+
+          {conditions.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-slate-400 mb-2">УСЛОВИЯ</p>
+              <div className="space-y-2">
+                {conditions.map((condition) => (
+                  <button
+                    key={condition.id}
+                    type="button"
+                    onClick={() => toggleCondition(twist.id, condition.id)}
+                    className={`w-full flex items-center justify-between gap-3 rounded-md border px-3 py-3 text-left transition ${condition.isMet ? 'bg-emerald-900/30 border-emerald-500/50 text-emerald-300 hover:bg-emerald-900/40' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'} cursor-pointer`}
+                  >
+                    <div>
+                      <p className="text-sm font-medium truncate">{condition.label}</p>
+                      <p className="text-xs uppercase tracking-[0.2em] text-slate-500 mt-1">{condition.type}</p>
+                    </div>
+                    <span className="text-lg">{condition.isMet ? '✅' : '☐'}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="mt-3 text-sm text-slate-300">{completedConditions}/{conditions.length} условий выполнено</p>
             </div>
           )}
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Twist } from '../types';
+import { Twist, TwistCondition, ConditionType, TwistInput } from '../types';
 
 interface TwistFormProps {
   // Редактируемый твист (undefined при создании нового)
@@ -21,9 +21,13 @@ const twistTypeLabels: Record<string, string> = {
 
 export function TwistForm({ twist, onSubmit, onClose }: TwistFormProps) {
   // Initialize form data
-  const [formData, setFormData] = useState<any>(
+  const [formData, setFormData] = useState<TwistInput>(
     twist
-      ? { ...twist }
+      ? {
+          ...twist,
+          conditions: twist.conditions || [],
+          isReady: twist.isReady ?? false,
+        }
       : {
           title: '',
           description: '',
@@ -31,8 +35,13 @@ export function TwistForm({ twist, onSubmit, onClose }: TwistFormProps) {
           type: 'revelation',
           consequence: '',
           status: 'hidden',
+          conditions: [],
+          isReady: false,
         }
   );
+
+  const [newConditionType, setNewConditionType] = useState<ConditionType>('LOCATION');
+  const [newConditionLabel, setNewConditionLabel] = useState('');
 
   // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -46,6 +55,43 @@ export function TwistForm({ twist, onSubmit, onClose }: TwistFormProps) {
     if (errors[name]) {
       setErrors({ ...errors, [name]: '' });
     }
+  };
+
+  const handleConditionTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setNewConditionType(e.target.value as ConditionType);
+  };
+
+  const handleConditionLabelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewConditionLabel(e.target.value);
+  };
+
+  const addCondition = () => {
+    if (!newConditionLabel.trim()) return;
+
+    setFormData((prev) => ({
+      ...prev,
+      conditions: [
+        ...(prev.conditions || []),
+        {
+          id: crypto.randomUUID(),
+          type: newConditionType,
+          label: newConditionLabel.trim(),
+          isMet: false,
+        },
+      ],
+    }));
+    setNewConditionLabel('');
+  };
+
+  const toggleCondition = (conditionId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      conditions: (prev.conditions || []).map((condition) =>
+        condition.id === conditionId
+          ? { ...condition, isMet: !condition.isMet }
+          : condition
+      ),
+    }));
   };
 
   // Validate form
@@ -156,6 +202,71 @@ export function TwistForm({ twist, onSubmit, onClose }: TwistFormProps) {
                 placeholder="Когда произойдёт этот твист?"
                 className="form-modal-input"
               />
+            </div>
+
+            {/* CONDITIONS */}
+            <div className="form-modal-field">
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <div>
+                  <label className="form-modal-label">Условия активации</label>
+                  <p className="text-xs text-slate-400">Добавьте условия, которые нужно отметить во время игры.</p>
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="form-modal-label text-xs">Тип условия</label>
+                  <select
+                    value={newConditionType}
+                    onChange={handleConditionTypeChange}
+                    className="form-modal-select"
+                  >
+                    <option value="LOCATION">Локация</option>
+                    <option value="NPC">НПС</option>
+                    <option value="ITEM">Предмет</option>
+                    <option value="CUSTOM">Текст</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="form-modal-label text-xs">Описание</label>
+                  <input
+                    type="text"
+                    value={newConditionLabel}
+                    onChange={handleConditionLabelChange}
+                    placeholder="Например: Найти ключ"
+                    className="form-modal-input"
+                  />
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={addCondition}
+                className="mt-3 form-modal-btn form-modal-btn-secondary"
+              >
+                Добавить условие
+              </button>
+
+              {formData.conditions && formData.conditions.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  {formData.conditions.map((condition: TwistCondition) => (
+                    <label
+                      key={condition.id}
+                      className="flex items-center gap-3 rounded-lg border border-slate-700 bg-slate-900 p-3"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={condition.isMet}
+                        onChange={() => toggleCondition(condition.id)}
+                        className="h-4 w-4 rounded border-slate-600 text-indigo-500 focus:ring-indigo-500"
+                      />
+                      <div className="flex-1 text-sm text-slate-200">
+                        <div className="font-medium">{condition.label}</div>
+                        <div className="text-xs text-slate-400">{condition.type}</div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* CONSEQUENCE */}

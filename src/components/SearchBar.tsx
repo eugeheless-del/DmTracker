@@ -90,6 +90,7 @@ export function SearchBar({ onResultSelect }: SearchBarProps) {
     <div className="relative w-full" ref={dropdownRef}>
       <div className="relative">
         <input
+          id="global-search-input"
           ref={inputRef}
           type="text"
           value={query}

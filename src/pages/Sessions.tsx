@@ -4,8 +4,17 @@ import { Session } from '../types';
 import { SessionForm } from '../components/SessionForm';
 
 function Sessions() {
-  const { sessions, pcs, addSession, updateSession, deleteSession, loadFromSupabase } = useStore();
-  const [showForm, setShowForm] = useState(false);
+  const {
+    sessions,
+    pcs,
+    addSession,
+    updateSession,
+    deleteSession,
+    loadFromSupabase,
+    showSessionForm,
+    openSessionForm,
+    closeSessionForm,
+  } = useStore();
   const [editingSession, setEditingSession] = useState<Session | undefined>();
 
   // Load sessions on mount
@@ -16,13 +25,13 @@ function Sessions() {
   // Handle new session
   const handleNewSession = () => {
     setEditingSession(undefined);
-    setShowForm(true);
+    openSessionForm();
   };
 
   // Handle session edit
   const handleEditSession = (session: Session) => {
     setEditingSession(session);
-    setShowForm(true);
+    openSessionForm();
   };
 
   // Handle session delete
@@ -64,7 +73,7 @@ function Sessions() {
       </div>
 
       {/* Form Modal */}
-      {showForm && (
+      {showSessionForm && (
         <SessionForm
           session={editingSession}
           availablePCs={pcs}
@@ -78,11 +87,11 @@ function Sessions() {
             } else {
               await addSession(formData);
             }
-            setShowForm(false);
+            closeSessionForm();
             setEditingSession(undefined);
           }}
           onClose={() => {
-            setShowForm(false);
+            closeSessionForm();
             setEditingSession(undefined);
           }}
         />

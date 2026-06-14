@@ -6,6 +6,9 @@ import Locations from '../pages/Locations'
 import Twists from '../pages/Twists'
 import Sessions from '../pages/Sessions'
 import { SearchBar } from './SearchBar'
+import HotkeysHelp from './HotkeysHelp'
+import { useGlobalHotkeys } from '../hooks/useGlobalHotkeys'
+import { useStore } from '../store'
 import { SearchResult } from '../types'
 
 type Screen = 'dashboard' | 'characters' | 'locations' | 'twists' | 'sessions'
@@ -18,6 +21,11 @@ type LayoutProps = {
 function Layout({ session, onSignOut }: LayoutProps) {
   const [currentScreen, setCurrentScreen] = useState<Screen>('dashboard')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const showHotkeysHelp = useStore((state) => state.showHotkeysHelp)
+  const openHotkeysHelp = useStore((state) => state.openHotkeysHelp)
+  const closeHotkeysHelp = useStore((state) => state.closeHotkeysHelp)
+
+  useGlobalHotkeys(setCurrentScreen)
 
   const navItems = [
     { id: 'dashboard', label: 'Общее', icon: '📊', route: '/dashboard' },
@@ -83,6 +91,14 @@ function Layout({ session, onSignOut }: LayoutProps) {
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              onClick={openHotkeysHelp}
+              className="rounded-full bg-slate-800 px-3 py-2 text-sm font-semibold text-slate-100 transition hover:bg-slate-700"
+              aria-label="Показать хоткеи"
+              type="button"
+            >
+              ⌨️
+            </button>
             <button
               onClick={onSignOut}
               className="rounded-full bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-slate-700"
@@ -157,6 +173,8 @@ function Layout({ session, onSignOut }: LayoutProps) {
           </div>
         </main>
       </div>
+
+      <HotkeysHelp isOpen={showHotkeysHelp} onClose={closeHotkeysHelp} />
 
       {/* Mobile Bottom Tab Bar */}
       <nav className="flex md:!hidden bg-slate-900 border-t border-slate-800">

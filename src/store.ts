@@ -18,6 +18,18 @@ const getCurrentUser = async () => {
   return user;
 };
 
+const calculateTwistReadiness = (twist: Twist) => {
+  const conditions = twist.conditions || [];
+  return conditions.length > 0 && conditions.every((condition) => condition.isMet);
+};
+
+const ensureTwistReadyState = (twist: Twist): Twist => {
+  return {
+    ...twist,
+    isReady: calculateTwistReadiness(twist),
+  };
+};
+
 // Initial empty state
 const initialState = {
   npcs: [] as NPC[],
@@ -25,6 +37,11 @@ const initialState = {
   twists: [] as Twist[],
   sessions: [] as Session[],
   locations: [] as Location[],
+  showHotkeysHelp: false,
+  showCharacterForm: false,
+  characterFormType: 'pc' as 'pc' | 'npc',
+  showTwistForm: false,
+  showSessionForm: false,
 };
 
 export const useStore = create<StoreState>((set, get) => {
@@ -164,6 +181,16 @@ export const useStore = create<StoreState>((set, get) => {
     },
 
     getPcById: (id) => get().pcs.find((pc) => pc.id === id),
+
+    openCharacterForm: (type) => set({ showCharacterForm: true, characterFormType: type }),
+    closeCharacterForm: () => set({ showCharacterForm: false, characterFormType: 'pc' }),
+    openTwistForm: () => set({ showTwistForm: true }),
+    closeTwistForm: () => set({ showTwistForm: false }),
+    openSessionForm: () => set({ showSessionForm: true }),
+    closeSessionForm: () => set({ showSessionForm: false }),
+    openHotkeysHelp: () => set({ showHotkeysHelp: true }),
+    closeHotkeysHelp: () => set({ showHotkeysHelp: false }),
+    toggleHotkeysHelp: () => set((state) => ({ showHotkeysHelp: !state.showHotkeysHelp })),
 
     // ===== Inventory Methods =====
     addInventoryItem: async (pcId: string, item: Partial<InventoryItem>) => {
@@ -340,18 +367,31 @@ export const useStore = create<StoreState>((set, get) => {
     addTwist: async (data: TwistInput) => {
       try {
         const user = await getCurrentUser();
+        const { isReady, ...payload } = data as any;
+        const twistData = {
+          title: payload.title,
+          description: payload.description,
+          trigger_condition: payload.trigger_condition,
+          status: payload.status,
+          type: payload.type,
+          consequence: payload.consequence,
+          conditions: payload.conditions ?? [],
+          campaign_id: payload.campaign_id,
+          user_id: user.id,
+          created_at: now(),
+          updated_at: now(),
+        };
 
         const { error } = await supabase
           .from('twists')
-          .insert([{ ...data, user_id: user.id, created_at: now(), updated_at: now() }]);
+          .insert([twistData]);
 
         if (error) throw error;
 
-        // Refresh data after insert
         const { data: twists, error: fetchError } = await supabase.from('twists').select('*');
         if (fetchError) throw fetchError;
 
-        set({ twists: twists as Twist[] });
+        set({ twists: (twists as Twist[]).map(ensureTwistReadyState) });
       } catch (error) {
         console.warn('Failed to add Twist:', error);
         throw error;
@@ -360,20 +400,109 @@ export const useStore = create<StoreState>((set, get) => {
 
     updateTwist: async (id, data) => {
       try {
+        const { isReady, ...payload } = data as any;
+        const updatePayload: any = {
+          updated_at: now(),
+        };
+
+        if (payload.title !== undefined) updatePayload.title = payload.title;
+        if (payload.description !== undefined) updatePayload.description = payload.description;
+        if (payload.trigger_condition !== undefined) updatePayload.trigger_condition = payload.trigger_condition;
+        if (payload.status !== undefined) updatePayload.status = payload.status;
+        if (payload.type !== undefined) updatePayload.type = payload.type;
+        if (payload.consequence !== undefined) updatePayload.consequence = payload.consequence;
+        if (payload.conditions !== undefined) updatePayload.conditions = payload.conditions;
+        if (payload.campaign_id !== undefined) updatePayload.campaign_id = payload.campaign_id;
+
         const { error } = await supabase
           .from('twists')
-          .update({ ...data, updated_at: now() })
+          .update(updatePayload)
           .eq('id', id);
 
         if (error) throw error;
 
-        // Refresh data after update
         const { data: twists, error: fetchError } = await supabase.from('twists').select('*');
         if (fetchError) throw fetchError;
 
-        set({ twists: twists as Twist[] });
+        set({ twists: (twists as Twist[]).map(ensureTwistReadyState) });
       } catch (error) {
         console.warn('Failed to update Twist:', error);
+        throw error;
+      }
+    },
+
+    addCondition: async (twistId, condition) => {
+      try {
+        const twist = get().getTwistById(twistId);
+        if (!twist) throw new Error('Twist not found');
+
+        const newCondition = {
+          ...condition,
+          id: crypto.randomUUID(),
+        };
+        const conditions = [...(twist.conditions || []), newCondition];
+        const isReady = calculateTwistReadiness({ ...twist, conditions });
+
+        const { error } = await supabase
+          .from('twists')
+          .update({ conditions, updated_at: now() })
+          .eq('id', twistId);
+
+        if (error) throw error;
+
+        set((state) => ({
+          twists: state.twists.map((item) =>
+            item.id === twistId ? { ...item, conditions, isReady } : item
+          ),
+        }));
+      } catch (error) {
+        console.warn('Failed to add twist condition:', error);
+        throw error;
+      }
+    },
+
+    toggleCondition: async (twistId, conditionId) => {
+      try {
+        const twist = get().getTwistById(twistId);
+        if (!twist) throw new Error('Twist not found');
+
+        const conditions = (twist.conditions || []).map((condition) =>
+          condition.id === conditionId ? { ...condition, isMet: !condition.isMet } : condition
+        );
+        const isReady = calculateTwistReadiness({ ...twist, conditions });
+
+        const { error } = await supabase
+          .from('twists')
+          .update({ conditions, updated_at: now() })
+          .eq('id', twistId);
+
+        if (error) throw error;
+
+        set((state) => ({
+          twists: state.twists.map((item) =>
+            item.id === twistId ? { ...item, conditions, isReady } : item
+          ),
+        }));
+      } catch (error) {
+        console.warn('Failed to toggle twist condition:', error);
+        throw error;
+      }
+    },
+
+    checkTwistStatus: async (twistId) => {
+      try {
+        const twist = get().getTwistById(twistId);
+        if (!twist) throw new Error('Twist not found');
+
+        const isReady = calculateTwistReadiness(twist);
+
+        set((state) => ({
+          twists: state.twists.map((item) =>
+            item.id === twistId ? { ...item, isReady } : item
+          ),
+        }));
+      } catch (error) {
+        console.warn('Failed to check twist status:', error);
         throw error;
       }
     },
@@ -565,7 +694,8 @@ export const useStore = create<StoreState>((set, get) => {
         set({
           pcs: pcsWithRelations as PC[],
           npcs: (npcsRes.data || []) as NPC[],
-          twists: (twistsRes.data || []) as Twist[],
+          twists: (twistsRes.data || [])
+            .map((twist) => ensureTwistReadyState(twist as Twist)) as Twist[],
           sessions: (sessionsRes.data || []) as Session[],
           locations: (locationsRes.data || []) as Location[],
         });

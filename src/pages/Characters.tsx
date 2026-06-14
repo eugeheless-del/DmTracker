@@ -7,37 +7,47 @@ import DrunkInnkeeperModal from '../components/DrunkInnkeeperModal';
 import InventoryModal from '../components/InventoryModal';
 
 function Characters() {
-  const { pcs, npcs, addPc, updatePc, deletePc, addNpc, updateNpc, deleteNpc } = useStore();
-  const [showForm, setShowForm] = useState(false);
-  const [formType, setFormType] = useState<'pc' | 'npc'>('pc');
+  const {
+    pcs,
+    npcs,
+    addPc,
+    updatePc,
+    deletePc,
+    addNpc,
+    updateNpc,
+    deleteNpc,
+    showCharacterForm,
+    characterFormType,
+    openCharacterForm,
+    closeCharacterForm,
+  } = useStore();
   const [editingCharacter, setEditingCharacter] = useState<PC | NPC | undefined>();
   const [drunkInnkeeperOpen, setDrunkInnkeeperOpen] = useState(false);
   const [inventoryPc, setInventoryPc] = useState<PC | undefined>();
 
   // Handle new character
   const handleNewCharacter = (type: 'pc' | 'npc') => {
-    setFormType(type);
     setEditingCharacter(undefined);
-    setShowForm(true);
+    openCharacterForm(type);
   };
 
   // Handle character submit
   const handleCharacterSubmit = async (data: any) => {
     try {
       if (editingCharacter) {
-        if (formType === 'pc') {
+        if (characterFormType === 'pc') {
           await updatePc(editingCharacter.id, data);
         } else {
           await updateNpc(editingCharacter.id, data);
         }
       } else {
-        if (formType === 'pc') {
+        if (characterFormType === 'pc') {
           await addPc(data);
         } else {
           await addNpc(data);
         }
       }
-      setShowForm(false);
+      closeCharacterForm();
       setEditingCharacter(undefined);
     } catch (error) {
       alert('Ошибка при сохранении персонажа. Попробуйте снова.');
@@ -47,9 +57,8 @@ function Characters() {
 
   // Handle character edit
   const handleEditCharacter = (character: PC | NPC, type: 'pc' | 'npc') => {
-    setFormType(type);
     setEditingCharacter(character);
-    setShowForm(true);
+    openCharacterForm(type);
   };
 
   // Handle character delete
@@ -118,13 +127,13 @@ function Characters() {
       </div>
 
       {/* Show form modal */}
-      {showForm && (
+      {showCharacterForm && (
         <CharacterForm
-          type={formType}
+          type={characterFormType}
           character={editingCharacter}
           onSubmit={handleCharacterSubmit}
           onClose={() => {
-            setShowForm(false);
+            closeCharacterForm();
             setEditingCharacter(undefined);
           }}
         />

@@ -17,7 +17,7 @@ function Dashboard() {
   const [editingCharacter, setEditingCharacter] = useState<PC | NPC | undefined>();
   const [inventoryPc, setInventoryPc] = useState<PC | undefined>();
  
-  const { pcs, npcs, twists, sessions, updatePc, updateNpc, deletePc, deleteNpc } = useStore();
+  const { pcs, npcs, twists, sessions, updatePc, updateNpc, deletePc, deleteNpc, toggleCondition } = useStore();
   if (!pcs || !npcs || !twists || !sessions) {
     return <div>Загрузка данных...</div>;
   }
@@ -173,12 +173,26 @@ function Dashboard() {
             <div className="card card--bordered space-y-3">
               <h3 className="h3 text-accent">✨ Активные твисты</h3>
               <div style={{ display: 'grid', gap: 'var(--space-sm)', maxHeight: '320px', overflowY: 'auto' }}>
-                {activeTwists.slice(-5).map((twist) => (
-                  <div key={twist.id} className="card bg-card rounded-lg p-2 border-l-2 border-accent">
-                    <p className="font-medium text-white text-xs">{twist.title}</p>
-                    <div className="small text-muted">{twist.status}</div>
-                  </div>
-                ))}
+                {activeTwists.slice(-5).map((twist) => {
+                  const completed = twist.conditions?.filter((condition) => condition.isMet).length ?? 0;
+                  const total = twist.conditions?.length ?? 0;
+                  const readyClass = twist.isReady ? 'border border-red-500 bg-red-900/20 ring-2 ring-red-500 animate-pulse' : 'bg-card border border-slate-700';
+
+                  return (
+                    <div key={twist.id} className={`rounded-lg p-3 transition-all duration-300 ${readyClass}`}>
+                      <p className="font-medium text-white text-xs">{twist.title}</p>
+                      <div className="small text-muted mt-2">
+                        {twist.isReady ? (
+                          <p className="text-red-200">⚡ ГОТОВ К ЗАПУСКУ</p>
+                        ) : total > 0 ? (
+                          <p>{completed}/{total} условий выполнено</p>
+                        ) : (
+                          <p>Статус: {twist.status}</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -261,15 +275,42 @@ function Dashboard() {
                   <p className="small text-muted">Перейдите на страницу "Твисты" чтобы добавить</p>
                 </div>
               ) : (
-                twists.map((twist) => (
-                  <div key={twist.id} className="card bg-card rounded-lg p-3 border-l-2 border-accent">
-                    <p className="font-medium text-white text-sm">{twist.title}</p>
-                    <div className="small text-muted mt-1">
-                      {twist.description && <p>{twist.description}</p>}
-                      <p>Статус: {twist.status}</p>
+                twists.map((twist) => {
+                  const conditions = twist.conditions || [];
+                  const completed = conditions.filter((condition) => condition.isMet).length;
+                  const total = conditions.length;
+                  const readyClass = twist.isReady ? 'border border-red-500 bg-red-900/20 ring-2 ring-red-500 animate-pulse' : 'bg-card border border-slate-700';
+
+                  return (
+                    <div key={twist.id} className={`rounded-lg p-3 transition-all duration-300 ${readyClass}`}>
+                      <p className="font-medium text-white text-sm">{twist.title}</p>
+                      <div className="small text-muted mt-2">
+                        {twist.description && <p>{twist.description}</p>}
+                        {twist.isReady ? (
+                          <p className="text-red-200">⚡ ГОТОВ К ЗАПУСКУ</p>
+                        ) : total > 0 ? (
+                          <div className="space-y-1">
+                            {conditions.slice(0, 3).map((condition) => (
+                              <button
+                                key={condition.id}
+                                type="button"
+                                onClick={() => toggleCondition(twist.id, condition.id)}
+                                className={`w-full rounded-md px-2 py-1 text-xs text-left transition-colors ${condition.isMet ? 'bg-emerald-900/30 border border-emerald-500/50 text-emerald-300 hover:bg-emerald-900/40' : 'bg-slate-800 border border-slate-700 text-slate-400 hover:bg-slate-700'}`}
+                              >
+                                {condition.isMet ? '✅' : '☐'} {condition.label}
+                              </button>
+                            ))}
+                            {conditions.length > 3 && (
+                              <p className="text-xs text-slate-500">+{conditions.length - 3} ещё</p>
+                            )}
+                          </div>
+                        ) : (
+                          <p>Статус: {twist.status}</p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           )}

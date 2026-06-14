@@ -20,6 +20,15 @@ export type TwistInput = Omit<Twist, 'id' | 'created_at' | 'updated_at'>;
 export type PCInput = Omit<PC, 'id' | 'created_at' | 'updated_at'>;
 export type NPCInput = Omit<NPC, 'id' | 'created_at' | 'updated_at'>;
 
+export type ConditionType = 'LOCATION' | 'NPC' | 'ITEM' | 'CUSTOM';
+
+export interface TwistCondition {
+  id: string;
+  type: ConditionType;
+  label: string;
+  isMet: boolean;
+}
+
 // Non-Player Character (NPC)
 export interface NPC extends BaseEntity {
   role?: string;
@@ -69,6 +78,8 @@ export interface Twist {
   type?: 'revelation' | 'enemy' | 'opportunity' | 'obstacle' | 'alliance';
   consequence?: string;
   status?: 'hidden' | 'ready' | 'revealed' | 'completed'; // twist status
+  conditions?: TwistCondition[];
+  isReady?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -94,6 +105,8 @@ export interface Location {
 }
 
 export type LocationInput = Omit<Location, 'id' | 'created_at'>;
+
+export type CharacterFormType = 'pc' | 'npc';
 
 // Quirky NPC - generator for "Пьяный Трактирщик" (The Drunk Innkeeper)
 export interface QuirkyNPC {
@@ -155,6 +168,9 @@ export interface StoreState {
   updateTwist: (id: string, data: Partial<Omit<Twist, 'id' | 'created_at'>>) => Promise<void>;
   deleteTwist: (id: string) => Promise<void>;
   getTwistById: (id: string) => Twist | undefined;
+  addCondition: (twistId: string, condition: Omit<TwistCondition, 'id'>) => Promise<void>;
+  toggleCondition: (twistId: string, conditionId: string) => Promise<void>;
+  checkTwistStatus: (twistId: string) => Promise<void>;
 
   // Session actions
   addSession: (session: Omit<Session, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
@@ -167,6 +183,22 @@ export interface StoreState {
   addLocation: (location: LocationInput) => Promise<void>;
   deleteLocation: (id: string) => Promise<void>;
   loadLocations: () => Promise<void>;
+
+  // Global hotkey UI state
+  showHotkeysHelp: boolean;
+  showCharacterForm: boolean;
+  characterFormType: CharacterFormType;
+  showTwistForm: boolean;
+  showSessionForm: boolean;
+  openCharacterForm: (type: CharacterFormType) => void;
+  closeCharacterForm: () => void;
+  openTwistForm: () => void;
+  closeTwistForm: () => void;
+  openSessionForm: () => void;
+  closeSessionForm: () => void;
+  openHotkeysHelp: () => void;
+  closeHotkeysHelp: () => void;
+  toggleHotkeysHelp: () => void;
 
   // Utility
   loadFromSupabase: () => Promise<void>;

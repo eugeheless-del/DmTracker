@@ -5,14 +5,13 @@ import { TwistForm } from '../components/TwistForm';
 import { TwistCard } from '../components/TwistCard';
 
 function Twists() {
-  const { twists, addTwist, updateTwist, deleteTwist } = useStore();
-  const [showForm, setShowForm] = useState(false);
+  const { twists, addTwist, updateTwist, deleteTwist, showTwistForm, openTwistForm, closeTwistForm } = useStore();
   const [editingTwist, setEditingTwist] = useState<Twist | undefined>();
 
   // Handle new twist
   const handleNewTwist = () => {
     setEditingTwist(undefined);
-    setShowForm(true);
+    openTwistForm();
   };
 
   // Handle twist submit (create or update)
@@ -23,7 +22,7 @@ function Twists() {
       } else {
         await addTwist(data);
       }
-      setShowForm(false);
+      closeTwistForm();
       setEditingTwist(undefined);
     } catch (error) {
       alert('Ошибка при сохранении твиста. Попробуйте снова.');
@@ -34,7 +33,7 @@ function Twists() {
   // Handle twist edit
   const handleEditTwist = (twist: Twist) => {
     setEditingTwist(twist);
-    setShowForm(true);
+    openTwistForm();
   };
 
   // Handle twist delete
@@ -72,12 +71,12 @@ function Twists() {
       </div>
 
       {/* Show form modal */}
-      {showForm && (
+      {showTwistForm && (
         <TwistForm
           twist={editingTwist}
           onSubmit={handleTwistSubmit}
           onClose={() => {
-            setShowForm(false);
+            closeTwistForm();
             setEditingTwist(undefined);
           }}
         />
