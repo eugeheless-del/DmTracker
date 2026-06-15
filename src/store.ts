@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { StoreState, NPC, PC, Twist, Session, SearchResult, InventoryItem, StatusEffect, Location, LocationInput, NPCTwistConnection, NPCConnectionType, TimelineEvent } from './types';
+import { StoreState, NPC, PC, Twist, Session, SearchResult, InventoryItem, StatusEffect, Location, LocationInput, NPCTwistConnection, NPCConnectionType, TimelineEvent, MapItem, MapPin } from './types';
 import { TwistInput } from './types';
 import { supabase } from './supabaseClient';
 
@@ -39,6 +39,10 @@ const initialState = {
   events: [] as TimelineEvent[],
   timelineEventsLoaded: false,
   npcTwistConnections: [] as NPCTwistConnection[],
+  maps: [] as MapItem[],
+  activeMap: null as MapItem | null,
+  mapPins: [] as MapPin[],
+  isMapEditMode: false,
   locations: [] as Location[],
   selectedLocationId: null as string | null,
   selectedDate: new Date().toISOString().slice(0, 10),
@@ -1025,7 +1029,118 @@ export const useStore = create<StoreState>((set, get) => {
       }
     },
 
-    setSelectedLocationId: (locationId) => set({ selectedLocationId: locationId }),
+    setSelectedLocationId: (locationId: string | null) => set({ selectedLocationId: locationId }),
+
+    fetchMaps: async () => {
+      try {
+        const user = await getCurrentUser();
+
+        const { data, error } = await supabase
+          .from('maps')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        set({ maps: (data || []) as MapItem[] });
+      } catch (error) {
+        console.warn('Failed to fetch Maps:', error);
+        throw error;
+      }
+    },
+
+    addMap: async (name: string, imageUrl: string) => {
+      try {
+        const user = await getCurrentUser();
+
+        const { data: insertedMap, error } = await supabase
+          .from('maps')
+          .insert([
+            {
+              name,
+              image_url: imageUrl,
+              user_id: user.id,
+              created_at: now(),
+            },
+          ])
+          .select('*')
+          .single();
+
+        if (error) throw error;
+        if (!insertedMap) throw new Error('Map creation returned no record');
+
+        set((state) => ({ maps: [insertedMap as MapItem, ...state.maps] }));
+        return insertedMap as MapItem;
+      } catch (error) {
+        console.warn('Failed to add Map:', error);
+        throw error;
+      }
+    },
+
+    fetchMapPins: async (mapId: string) => {
+      try {
+        const { data, error } = await supabase
+          .from('map_pins')
+          .select('*, location:locations(id, name, description, linked_npc_ids)')
+          .eq('map_id', mapId)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        set({ mapPins: (data || []) as MapPin[] });
+      } catch (error) {
+        console.warn('Failed to fetch Map Pins:', error);
+        throw error;
+      }
+    },
+
+    addPin: async (mapId: string, locationId: string, x: number, y: number) => {
+      try {
+        const { data: insertedPin, error } = await supabase
+          .from('map_pins')
+          .insert([
+            {
+              map_id: mapId,
+              location_id: locationId,
+              x_coord: x,
+              y_coord: y,
+              created_at: now(),
+            },
+          ])
+          .select('*, location:locations(name, description, image_url)')
+          .single();
+
+        if (error) throw error;
+        if (!insertedPin) throw new Error('Pin creation returned no record');
+
+        set((state) => ({ mapPins: [...state.mapPins, insertedPin as MapPin] }));
+        return insertedPin as MapPin;
+      } catch (error) {
+        console.warn('Failed to add Map Pin:', error);
+        throw error;
+      }
+    },
+
+    deletePin: async (pinId: string) => {
+      try {
+        const { error } = await supabase
+          .from('map_pins')
+          .delete()
+          .eq('id', pinId);
+
+        if (error) throw error;
+
+        set((state) => ({ mapPins: state.mapPins.filter((pin) => pin.id !== pinId) }));
+      } catch (error) {
+        console.warn('Failed to delete Map Pin:', error);
+        throw error;
+      }
+    },
+
+    setActiveMap: (map) => set({ activeMap: map, mapPins: map ? get().mapPins : [] }),
+
+    toggleMapEditMode: () => set((state) => ({ isMapEditMode: !state.isMapEditMode })),
 
     loadLocations: async () => get().fetchLocations(),
 

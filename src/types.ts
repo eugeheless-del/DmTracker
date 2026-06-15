@@ -124,6 +124,23 @@ export interface Location {
   updated_at?: string;
 }
 
+export interface MapItem {
+  id: string;
+  name: string;
+  image_url: string;
+  description?: string;
+  created_at?: string;
+}
+
+export interface MapPin {
+  id: string;
+  map_id: string;
+  location_id: string;
+  x_coord: number;
+  y_coord: number;
+  location?: Location; // Подтягиваем данные локации для отображения
+}
+
 export type LocationInput = Omit<Location, 'id' | 'user_id' | 'created_at' | 'updated_at'> & {
   linked_npc_ids?: string[];
 };
@@ -229,13 +246,25 @@ export interface StoreState {
   // Location actions
   locations: Location[];
   selectedLocationId: string | null;
-  setSelectedLocationId: (locationId: string | null) => void;
   fetchLocations: () => Promise<void>;
   addLocation: (location: LocationInput) => Promise<void>;
   updateLocation: (id: string, data: Partial<Omit<Location, 'id' | 'user_id' | 'created_at' | 'updated_at'>>) => Promise<void>;
   deleteLocation: (id: string) => Promise<void>;
   toggleNpcInLocation: (locationId: string, npcId: string) => Promise<void>;
   loadLocations: () => Promise<void>;
+
+  // Map actions
+  maps: MapItem[];
+  activeMap: MapItem | null;
+  mapPins: MapPin[];
+  isMapEditMode: boolean;
+  fetchMaps: () => Promise<void>;
+  addMap: (name: string, imageUrl: string) => Promise<MapItem>;
+  fetchMapPins: (mapId: string) => Promise<void>;
+  addPin: (mapId: string, locationId: string, x: number, y: number) => Promise<MapPin>;
+  deletePin: (pinId: string) => Promise<void>;
+  setActiveMap: (map: MapItem | null) => void;
+  toggleMapEditMode: () => void;
 
   // Timeline event actions
   events: TimelineEvent[];

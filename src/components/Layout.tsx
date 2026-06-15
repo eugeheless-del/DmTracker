@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js'
 import Dashboard from '../pages/Dashboard'
 import Characters from '../pages/Characters'
 import Locations from '../pages/Locations'
+import Maps from '../pages/Maps'
 import Twists from '../pages/Twists'
 import Sessions from '../pages/Sessions'
 import CampaignTimeline from '../pages/CampaignTimeline'
@@ -12,7 +13,7 @@ import { useGlobalHotkeys } from '../hooks/useGlobalHotkeys'
 import { useStore } from '../store'
 import { SearchResult } from '../types'
 
-type Screen = 'dashboard' | 'characters' | 'locations' | 'twists' | 'sessions' | 'timeline'
+type Screen = 'dashboard' | 'characters' | 'locations' | 'maps' | 'twists' | 'sessions' | 'timeline'
 
 type LayoutProps = {
   session: Session
@@ -33,6 +34,7 @@ function Layout({ session, onSignOut }: LayoutProps) {
     { id: 'timeline', label: 'Хронология', icon: '📅', route: '/timeline' },
     { id: 'characters', label: 'Персонажи', icon: '🧙', route: '/characters' },
     { id: 'locations', label: 'Локации', icon: '📍', route: '/locations' },
+    { id: 'maps', label: 'Карты', icon: '🗺️', route: '/maps' },
     { id: 'twists', label: 'Твисты', icon: '✨', route: '/twists' },
     { id: 'sessions', label: 'Сессии', icon: '📅', route: '/sessions' },
   ] as const
@@ -68,6 +70,8 @@ function Layout({ session, onSignOut }: LayoutProps) {
         return <Characters />
       case 'locations':
         return <Locations />
+      case 'maps':
+        return <Maps />
       case 'twists':
         return <Twists />
       case 'sessions':
