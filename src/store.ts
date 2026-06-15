@@ -30,6 +30,17 @@ const ensureTwistReadyState = (twist: Twist): Twist => {
   };
 };
 
+const MAP_IMAGE_BUCKET = 'map-images';
+const MAX_MAP_IMAGE_SIZE = 10 * 1024 * 1024; // 10 MB
+const ALLOWED_MAP_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+
+const normalizeMapImagePath = (path: string): string => {
+  if (!path) return '';
+  const publicUrlMatch = path.match(/\/storage\/v1\/object\/public\/map-images\/(.+)$/);
+  if (publicUrlMatch) return publicUrlMatch[1];
+  return path.replace(/^\/+/, '');
+};
+
 // Initial empty state
 const initialState = {
   npcs: [] as NPC[],
@@ -43,6 +54,8 @@ const initialState = {
   activeMap: null as MapItem | null,
   mapPins: [] as MapPin[],
   isMapEditMode: false,
+  mapsLoading: false,
+  mapsError: null as Error | null,
   locations: [] as Location[],
   selectedLocationId: null as string | null,
   selectedDate: new Date().toISOString().slice(0, 10),
@@ -1032,6 +1045,7 @@ export const useStore = create<StoreState>((set, get) => {
     setSelectedLocationId: (locationId: string | null) => set({ selectedLocationId: locationId }),
 
     fetchMaps: async () => {
+      set({ mapsLoading: true, mapsError: null });
       try {
         const user = await getCurrentUser();
 
@@ -1046,20 +1060,100 @@ export const useStore = create<StoreState>((set, get) => {
         set({ maps: (data || []) as MapItem[] });
       } catch (error) {
         console.warn('Failed to fetch Maps:', error);
+        set({ mapsError: error instanceof Error ? error : new Error('Failed to fetch maps') });
+        throw error;
+      } finally {
+        set({ mapsLoading: false });
+      }
+    },
+
+    uploadMapImage: async (userId: string, mapId: string, file: File) => {
+      try {
+        if (!file) throw new Error('No image file provided');
+        if (!ALLOWED_MAP_IMAGE_TYPES.includes(file.type)) {
+          throw new Error('Unsupported file type. Only JPEG, PNG, WEBP and GIF are allowed.');
+        }
+        if (file.size > MAX_MAP_IMAGE_SIZE) {
+          throw new Error(`Image size must be less than ${MAX_MAP_IMAGE_SIZE / 1024 / 1024}MB`);
+        }
+        
+        const folderPath = `${userId}/${mapId}`;
+        const { data: existingFiles, error: listError } = await supabase
+          .storage
+          .from(MAP_IMAGE_BUCKET)
+          .list(folderPath);
+
+        if (listError) throw listError;
+
+        if (existingFiles?.length) {
+          const oldPaths = existingFiles.map((fileEntry) => `${folderPath}/${fileEntry.name}`);
+          const { error: removeError } = await supabase
+            .storage
+            .from(MAP_IMAGE_BUCKET)
+            .remove(oldPaths);
+
+          if (removeError) throw removeError;
+        }
+
+        const filePath = `${folderPath}/${file.name}`;
+        const { error: uploadError } = await supabase
+          .storage
+          .from(MAP_IMAGE_BUCKET)
+          .upload(filePath, file, { upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        const publicUrl = get().getMapImageUrl(filePath);
+        if (!publicUrl) throw new Error('Failed to generate public URL for map image');
+
+        return publicUrl;
+      } catch (error) {
+        console.warn('Failed to upload map image:', error);
         throw error;
       }
     },
 
-    addMap: async (name: string, imageUrl: string) => {
+    deleteMapImage: async (filePath: string) => {
+      try {
+        const normalizedPath = normalizeMapImagePath(filePath);
+        if (!normalizedPath) return;
+
+        const { error } = await supabase
+          .storage
+          .from(MAP_IMAGE_BUCKET)
+          .remove([normalizedPath]);
+
+        if (error) throw error;
+      } catch (error) {
+        console.warn('Failed to delete map image:', error);
+        throw error;
+      }
+    },
+
+    getMapImageUrl: (imagePath: string) => {
+      const normalizedPath = normalizeMapImagePath(imagePath);
+      if (!normalizedPath) return '';
+      return supabase.storage.from(MAP_IMAGE_BUCKET).getPublicUrl(normalizedPath).data.publicUrl || '';
+    },
+
+    addMap: async (name: string, imageUrl: string, file?: File) => {
       try {
         const user = await getCurrentUser();
+        const mapId = crypto.randomUUID();
+        let imagePath = imageUrl;
+
+        if (file) {
+          imagePath = `${user.id}/${mapId}/${file.name}`;
+          await get().uploadMapImage(user.id, mapId, file);
+        }
 
         const { data: insertedMap, error } = await supabase
           .from('maps')
           .insert([
             {
+              id: mapId,
               name,
-              image_url: imageUrl,
+              image_url: imagePath,
               user_id: user.id,
               created_at: now(),
             },
@@ -1074,6 +1168,77 @@ export const useStore = create<StoreState>((set, get) => {
         return insertedMap as MapItem;
       } catch (error) {
         console.warn('Failed to add Map:', error);
+        throw error;
+      }
+    },
+
+    updateMap: async (
+      id: string,
+      data: Partial<Omit<MapItem, 'id' | 'created_at'>> & { file?: File }
+    ) => {
+      try {
+        const user = await getCurrentUser();
+        const existingMap = get().maps.find((map) => map.id === id);
+        if (!existingMap) throw new Error('Map not found');
+        const updatePayload: Record<string, any> = {
+           updated_at: new Date().toISOString() // ✅ Стандартный формат даты
+    };
+        // const updatePayload: any = { updated_at: now() };
+
+        if (data.name !== undefined) updatePayload.name = data.name;
+        if (data.description !== undefined) updatePayload.description = data.description;
+
+        if (data.file) {
+          if (existingMap.image_url) {
+            await get().deleteMapImage(existingMap.image_url);
+          }
+
+          const filePath = `${user.id}/${id}/${data.file.name}`;
+          await get().uploadMapImage(user.id, id, data.file);
+          updatePayload.image_url = filePath;
+        } else if (data.image_url !== undefined) {
+          updatePayload.image_url = data.image_url;
+        }
+
+        const { data: updatedMap, error } = await supabase
+          .from('maps')
+          .update(updatePayload)
+          .eq('id', id)
+          .eq('user_id', user.id)
+          .select('*')
+          .maybeSingle();
+
+        if (error) throw error;
+        if (!updatedMap) throw new Error('Map update returned no record');
+
+        set((state) => ({
+          maps: state.maps.map((map) => (map.id === id ? (updatedMap as MapItem) : map)),
+        }));
+
+        return updatedMap as MapItem;
+      } catch (error) {
+        console.warn('Failed to update Map:', error);
+        throw error;
+      }
+    },
+
+    deleteMap: async (id: string) => {
+      try {
+        const existingMap = get().maps.find((map) => map.id === id);
+        if (existingMap?.image_url) {
+          await get().deleteMapImage(existingMap.image_url);
+        }
+
+        const { error } = await supabase
+          .from('maps')
+          .delete()
+          .eq('id', id);
+
+        if (error) throw error;
+
+        set((state) => ({ maps: state.maps.filter((map) => map.id !== id) }));
+      } catch (error) {
+        console.warn('Failed to delete Map:', error);
         throw error;
       }
     },

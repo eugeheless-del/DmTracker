@@ -258,8 +258,15 @@ export interface StoreState {
   activeMap: MapItem | null;
   mapPins: MapPin[];
   isMapEditMode: boolean;
+  mapsLoading: boolean;
+  mapsError: Error | null;
   fetchMaps: () => Promise<void>;
-  addMap: (name: string, imageUrl: string) => Promise<MapItem>;
+  uploadMapImage: (userId: string, mapId: string, file: File) => Promise<string>;
+  deleteMapImage: (filePath: string) => Promise<void>;
+  getMapImageUrl: (imagePath: string) => string;
+  addMap: (name: string, imageUrl: string, file?: File) => Promise<MapItem>;
+  updateMap: (id: string, data: Partial<Omit<MapItem, 'id' | 'created_at'>> & { file?: File }) => Promise<MapItem>;
+  deleteMap: (id: string) => Promise<void>;
   fetchMapPins: (mapId: string) => Promise<void>;
   addPin: (mapId: string, locationId: string, x: number, y: number) => Promise<MapPin>;
   deletePin: (pinId: string) => Promise<void>;

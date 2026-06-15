@@ -4,7 +4,7 @@ import { useStore } from '../store';
 import type { MapItem, MapPin } from '../types';
 
 interface MapViewerProps {
-  map: MapItem;
+  map?: MapItem | null;
 }
 
 interface PendingCoords {
@@ -20,8 +20,10 @@ export default function MapViewer({ map }: MapViewerProps) {
   const [hoveredPinId, setHoveredPinId] = useState<string | null>(null);
   const [selectedPin, setSelectedPin] = useState<MapPin | null>(null);
   const [isSavingPin, setIsSavingPin] = useState(false);
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
-  const { mapPins, isMapEditMode, locations, npcs, addPin, deletePin, fetchMapPins, toggleMapEditMode } = useStore(
+  const { mapPins, isMapEditMode, locations, npcs, addPin, deletePin, fetchMapPins, toggleMapEditMode, activeMap, getMapImageUrl } = useStore(
     useShallow((state) => ({
       mapPins: state.mapPins,
       isMapEditMode: state.isMapEditMode,
@@ -31,10 +33,17 @@ export default function MapViewer({ map }: MapViewerProps) {
       deletePin: state.deletePin,
       fetchMapPins: state.fetchMapPins,
       toggleMapEditMode: state.toggleMapEditMode,
+      activeMap: state.activeMap,
+      getMapImageUrl: state.getMapImageUrl,
     }))
   );
 
-  const displayedPins = mapPins.filter((pin) => pin.map_id === map.id);
+  const currentMap: MapItem | null = map ?? activeMap;
+  if (!currentMap) return null;
+
+  const imagePath = currentMap?.image_url ?? '';
+  const imageUrl = imagePath ? getMapImageUrl(imagePath) : '';
+  const displayedPins = mapPins.filter((pin) => pin.map_id === currentMap.id);
 
   const getNpcNames = (ids?: string[]) => {
     if (!ids?.length) return [];
@@ -44,11 +53,17 @@ export default function MapViewer({ map }: MapViewerProps) {
   };
 
   useEffect(() => {
-    if (!map?.id) return;
-    fetchMapPins(map.id).catch((error) => console.warn('Failed to load map pins:', error));
+    const mapId = currentMap?.id;
+    if (!mapId) return;
+    fetchMapPins(mapId).catch((error) => console.warn('Failed to load map pins:', error));
     setHoveredPinId(null);
     setSelectedPin(null);
-  }, [fetchMapPins, map.id]);
+  }, [fetchMapPins, currentMap?.id]);
+
+  useEffect(() => {
+    setIsImageLoaded(false);
+    setImageError(false);
+  }, [imageUrl]);
 
   const handleImageClick = (event: React.MouseEvent<HTMLImageElement>) => {
     if (!isMapEditMode) return;
@@ -67,8 +82,9 @@ export default function MapViewer({ map }: MapViewerProps) {
     if (!pendingCoords || !selectedLocationId) return;
 
     try {
+      if (!currentMap) return;
       setIsSavingPin(true);
-      await addPin(map.id, selectedLocationId, pendingCoords.x, pendingCoords.y);
+      await addPin(currentMap.id, selectedLocationId, pendingCoords.x, pendingCoords.y);
       setPendingCoords(null);
       setSelectedLocationId('');
     } catch (error) {
@@ -102,30 +118,47 @@ export default function MapViewer({ map }: MapViewerProps) {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Карта</p>
-            <h2 className="text-2xl font-semibold text-white">{map.name}</h2>
+            <h2 className="text-2xl font-semibold text-white">{currentMap?.name ?? 'Без названия'}</h2>
           </div>
-          <button
-            type="button"
-            onClick={toggleMapEditMode}
-            className={`rounded-2xl px-4 py-3 text-sm font-semibold transition ${
-              isMapEditMode
-                ? 'bg-blue-600 text-white hover:bg-blue-500'
-                : 'bg-slate-700 text-slate-100 hover:bg-slate-600'
-            }`}
-          >
-            {isMapEditMode
-              ? '️ Режим редактирования (нажми для просмотра)'
-              : '👁 Режим просмотра (нажми для расстановки)'}
-          </button>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <button
+              type="button"
+              onClick={toggleMapEditMode}
+              className={`rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+                isMapEditMode
+                  ? 'bg-blue-600 text-white hover:bg-blue-500'
+                  : 'bg-slate-700 text-slate-100 hover:bg-slate-600'
+              }`}
+            >
+              {isMapEditMode
+                ? '️ Режим редактирования (нажми для просмотра)'
+                : '👁 Режим просмотра (нажми для расстановки)'}
+            </button>
+          </div>
         </div>
 
         <div className="relative flex-1 overflow-hidden rounded-xl border border-slate-700 bg-slate-950">
-          <img
-            src={map.image_url}
-            alt={map.name}
-            className="block w-full h-auto"
-            onClick={handleImageClick}
-          />
+          {imageUrl && !imageError ? (
+            <>
+              {!isImageLoaded && (
+                <div className="absolute inset-0 z-20 grid place-items-center bg-slate-950/70">
+                  <div className="h-16 w-16 animate-spin rounded-full border-4 border-slate-700 border-t-emerald-400" />
+                </div>
+              )}
+              <img
+                src={imageUrl}
+                alt={currentMap.name}
+                className="block w-full h-auto"
+                onClick={handleImageClick}
+                onLoad={() => setIsImageLoaded(true)}
+                onError={() => setImageError(true)}
+              />
+            </>
+          ) : (
+            <div className="grid h-72 place-items-center bg-slate-900 text-slate-500">
+              {imageError ? 'Не удалось загрузить изображение карты' : 'Загрузка карты...'}
+            </div>
+          )}
 
           {displayedPins.map((pin) => (
             <div
@@ -238,7 +271,7 @@ export default function MapViewer({ map }: MapViewerProps) {
                   <div className="mt-4 pt-4 border-t border-slate-700">
                     <p className="text-xs text-slate-500 font-semibold mb-2">СВЯЗАННЫЕ НПС</p>
                     <div className="flex flex-wrap gap-2">
-                      {getNpcNames(selectedPin.location.linked_npc_ids).map((name, idx) => (
+                      {getNpcNames(selectedPin.location?.linked_npc_ids).map((name, idx) => (
                         <span key={idx} className="bg-slate-800 text-emerald-400 text-xs px-2 py-1 rounded border border-slate-700">
                           {name}
                         </span>
