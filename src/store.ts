@@ -40,6 +40,7 @@ const initialState = {
   timelineEventsLoaded: false,
   npcTwistConnections: [] as NPCTwistConnection[],
   locations: [] as Location[],
+  selectedLocationId: null as string | null,
   selectedDate: new Date().toISOString().slice(0, 10),
   calendarMonth: new Date().getMonth(),
   calendarYear: new Date().getFullYear(),
@@ -912,15 +913,49 @@ export const useStore = create<StoreState>((set, get) => {
       try {
         const user = await getCurrentUser();
 
-        const { error } = await supabase
+        const { data: insertedLocation, error } = await supabase
           .from('locations')
-          .insert([{ ...data, user_id: user.id, created_at: now() }]);
+          .insert([
+            {
+              ...data,
+              user_id: user.id,
+              linked_npc_ids: data.linked_npc_ids || [],
+              created_at: now(),
+              updated_at: now(),
+            },
+          ])
+          .select('*')
+          .single();
 
         if (error) throw error;
+        if (!insertedLocation) throw new Error('Location creation returned no record');
 
-        await get().loadLocations();
+        set((state) => ({ locations: [insertedLocation as Location, ...state.locations] }));
       } catch (error) {
         console.warn('Failed to add Location:', error);
+        throw error;
+      }
+    },
+
+    updateLocation: async (id, data) => {
+      try {
+        const { data: updatedLocation, error } = await supabase
+          .from('locations')
+          .update({ ...data, updated_at: now() })
+          .eq('id', id)
+          .select('*')
+          .single();
+
+        if (error) throw error;
+        if (!updatedLocation) throw new Error('Location update returned no record');
+
+        set((state) => ({
+          locations: state.locations.map((location) =>
+            location.id === id ? (updatedLocation as Location) : location
+          ),
+        }));
+      } catch (error) {
+        console.warn('Failed to update Location:', error);
         throw error;
       }
     },
@@ -941,19 +976,58 @@ export const useStore = create<StoreState>((set, get) => {
       }
     },
 
-    loadLocations: async () => {
+    toggleNpcInLocation: async (locationId, npcId) => {
       try {
-        await getCurrentUser();
+        const location = get().locations.find((item) => item.id === locationId);
+        if (!location) throw new Error('Location not found');
 
-        const { data, error } = await supabase.from('locations').select('*').order('created_at', { ascending: false });
+        const nextNpcIds = location.linked_npc_ids?.includes(npcId)
+          ? location.linked_npc_ids.filter((id) => id !== npcId)
+          : [...(location.linked_npc_ids || []), npcId];
+
+        const { data: updatedLocation, error } = await supabase
+          .from('locations')
+          .update({ linked_npc_ids: nextNpcIds, updated_at: now() })
+          .eq('id', locationId)
+          .select('*')
+          .single();
+
+        if (error) throw error;
+        if (!updatedLocation) throw new Error('Location NPC toggle returned no record');
+
+        set((state) => ({
+          locations: state.locations.map((item) =>
+            item.id === locationId ? (updatedLocation as Location) : item
+          ),
+        }));
+      } catch (error) {
+        console.warn('Failed to toggle NPC in Location:', error);
+        throw error;
+      }
+    },
+
+    fetchLocations: async () => {
+      try {
+        const user = await getCurrentUser();
+
+        const { data, error } = await supabase
+          .from('locations')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
         if (error) throw error;
 
         set({ locations: (data || []) as Location[] });
       } catch (error) {
-        console.warn('Failed to load Locations:', error);
+        console.warn('Failed to fetch Locations:', error);
         throw error;
       }
     },
+
+    setSelectedLocationId: (locationId) => set({ selectedLocationId: locationId }),
+
+    loadLocations: async () => get().fetchLocations(),
 
     // ===== Utility Methods =====
     loadFromSupabase: async () => {

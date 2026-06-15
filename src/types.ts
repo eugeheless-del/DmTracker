@@ -115,12 +115,18 @@ export type SessionInput = Omit<Session, 'id' | 'created_at' | 'updated_at'>;
 
 export interface Location {
   id: string;
+  user_id: string;
   name: string;
   description?: string;
+  image_url?: string;
+  linked_npc_ids: string[];
   created_at?: string;
+  updated_at?: string;
 }
 
-export type LocationInput = Omit<Location, 'id' | 'created_at'>;
+export type LocationInput = Omit<Location, 'id' | 'user_id' | 'created_at' | 'updated_at'> & {
+  linked_npc_ids?: string[];
+};
 
 export type EventType = 'quest' | 'combat' | 'travel' | 'downtime' | 'npc' | 'other';
 
@@ -222,8 +228,13 @@ export interface StoreState {
 
   // Location actions
   locations: Location[];
+  selectedLocationId: string | null;
+  setSelectedLocationId: (locationId: string | null) => void;
+  fetchLocations: () => Promise<void>;
   addLocation: (location: LocationInput) => Promise<void>;
+  updateLocation: (id: string, data: Partial<Omit<Location, 'id' | 'user_id' | 'created_at' | 'updated_at'>>) => Promise<void>;
   deleteLocation: (id: string) => Promise<void>;
+  toggleNpcInLocation: (locationId: string, npcId: string) => Promise<void>;
   loadLocations: () => Promise<void>;
 
   // Timeline event actions
