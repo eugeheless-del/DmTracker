@@ -31,15 +31,19 @@ const ensureTwistReadyState = (twist: Twist): Twist => {
 };
 
 const MAP_IMAGE_BUCKET = 'map-images';
+const LOCATION_IMAGE_BUCKET = 'location-images';
 const MAX_MAP_IMAGE_SIZE = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_MAP_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
-const normalizeMapImagePath = (path: string): string => {
+const normalizeStoragePath = (path: string, bucket: string): string => {
   if (!path) return '';
-  const publicUrlMatch = path.match(/\/storage\/v1\/object\/public\/map-images\/(.+)$/);
+  const publicUrlMatch = path.match(new RegExp(`/storage/v1/object/public/${bucket}/(.+)$`));
   if (publicUrlMatch) return publicUrlMatch[1];
   return path.replace(/^\/+/, '');
 };
+
+const normalizeMapImagePath = (path: string): string => normalizeStoragePath(path, MAP_IMAGE_BUCKET);
+const normalizeLocationImagePath = (path: string): string => normalizeStoragePath(path, LOCATION_IMAGE_BUCKET);
 
 // Initial empty state
 const initialState = {
@@ -926,15 +930,25 @@ export const useStore = create<StoreState>((set, get) => {
     getSessionById: (id) => get().sessions.find((session) => session.id === id),
 
     // ===== Location Methods =====
-    addLocation: async (data: LocationInput) => {
+    addLocation: async (data: LocationInput & { file?: File }) => {
       try {
         const user = await getCurrentUser();
+        const locationId = crypto.randomUUID();
+        const { file, ...locationData } = data;
+
+        let imagePath = data.image_url;
+        if (file) {
+          imagePath = `${user.id}/${locationId}/${file.name}`;
+          await get().uploadLocationImage(user.id, locationId, file);
+        }
 
         const { data: insertedLocation, error } = await supabase
           .from('locations')
           .insert([
             {
-              ...data,
+              id: locationId,
+              ...locationData,
+              image_url: imagePath,
               user_id: user.id,
               linked_npc_ids: data.linked_npc_ids || [],
               created_at: now(),
@@ -956,9 +970,30 @@ export const useStore = create<StoreState>((set, get) => {
 
     updateLocation: async (id, data) => {
       try {
+        const existingLocation = get().locations.find((location) => location.id === id);
+        if (!existingLocation) throw new Error('Location not found');
+
+        const { file, ...locationData } = data as Partial<Omit<Location, 'id' | 'user_id' | 'created_at' | 'updated_at'>> & {
+          file?: File;
+        };
+
+        const updatePayload: Record<string, any> = {
+          ...locationData,
+          updated_at: now(),
+        };
+
+        if (file) {
+          if (existingLocation.image_url) {
+            await get().deleteLocationImage(existingLocation.image_url);
+          }
+
+          updatePayload.image_url = `${existingLocation.user_id}/${id}/${file.name}`;
+          await get().uploadLocationImage(existingLocation.user_id, id, file);
+        }
+
         const { data: updatedLocation, error } = await supabase
           .from('locations')
-          .update({ ...data, updated_at: now() })
+          .update(updatePayload)
           .eq('id', id)
           .select('*')
           .single();
@@ -979,6 +1014,11 @@ export const useStore = create<StoreState>((set, get) => {
 
     deleteLocation: async (id) => {
       try {
+        const existingLocation = get().locations.find((location) => location.id === id);
+        if (existingLocation?.image_url) {
+          await get().deleteLocationImage(existingLocation.image_url);
+        }
+
         const { error } = await supabase
           .from('locations')
           .delete()
@@ -1040,6 +1080,55 @@ export const useStore = create<StoreState>((set, get) => {
         console.warn('Failed to fetch Locations:', error);
         throw error;
       }
+    },
+
+    uploadLocationImage: async (userId: string, locationId: string, file: File) => {
+      try {
+        if (!file) throw new Error('No image file provided');
+        if (!ALLOWED_MAP_IMAGE_TYPES.includes(file.type)) {
+          throw new Error('Unsupported file type. Only JPEG, PNG, WEBP and GIF are allowed.');
+        }
+        if (file.size > MAX_MAP_IMAGE_SIZE) {
+          throw new Error(`Image size must be less than ${MAX_MAP_IMAGE_SIZE / 1024 / 1024}MB`);
+        }
+
+        const folderPath = `${userId}/${locationId}`;
+        const filePath = `${folderPath}/${file.name}`;
+        const { error: uploadError } = await supabase
+          .storage
+          .from(LOCATION_IMAGE_BUCKET)
+          .upload(filePath, file, { upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        return filePath;
+      } catch (error) {
+        console.warn('Failed to upload location image:', error);
+        throw error;
+      }
+    },
+
+    deleteLocationImage: async (filePath: string) => {
+      try {
+        const normalizedPath = normalizeLocationImagePath(filePath);
+        if (!normalizedPath) return;
+
+        const { error } = await supabase
+          .storage
+          .from(LOCATION_IMAGE_BUCKET)
+          .remove([normalizedPath]);
+
+        if (error) throw error;
+      } catch (error) {
+        console.warn('Failed to delete location image:', error);
+        throw error;
+      }
+    },
+
+    getLocationImageUrl: (imagePath: string) => {
+      const normalizedPath = normalizeLocationImagePath(imagePath);
+      if (!normalizedPath) return '';
+      return supabase.storage.from(LOCATION_IMAGE_BUCKET).getPublicUrl(normalizedPath).data.publicUrl || '';
     },
 
     setSelectedLocationId: (locationId: string | null) => set({ selectedLocationId: locationId }),

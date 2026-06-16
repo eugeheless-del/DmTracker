@@ -143,6 +143,7 @@ export interface MapPin {
 
 export type LocationInput = Omit<Location, 'id' | 'user_id' | 'created_at' | 'updated_at'> & {
   linked_npc_ids?: string[];
+  file?: File;
 };
 
 export type EventType = 'quest' | 'combat' | 'travel' | 'downtime' | 'npc' | 'other';
@@ -248,8 +249,14 @@ export interface StoreState {
   selectedLocationId: string | null;
   fetchLocations: () => Promise<void>;
   addLocation: (location: LocationInput) => Promise<void>;
-  updateLocation: (id: string, data: Partial<Omit<Location, 'id' | 'user_id' | 'created_at' | 'updated_at'>>) => Promise<void>;
+  updateLocation: (
+    id: string,
+    data: Partial<Omit<Location, 'id' | 'user_id' | 'created_at' | 'updated_at'>> & { file?: File }
+  ) => Promise<void>;
   deleteLocation: (id: string) => Promise<void>;
+  uploadLocationImage: (userId: string, locationId: string, file: File) => Promise<string>;
+  deleteLocationImage: (filePath: string) => Promise<void>;
+  getLocationImageUrl: (imagePath: string) => string;
   toggleNpcInLocation: (locationId: string, npcId: string) => Promise<void>;
   loadLocations: () => Promise<void>;
 

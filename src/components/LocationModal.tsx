@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useStore } from '../store';
+import MapImageUpload from './MapImageUpload';
 import type { Location, NPC } from '../types';
 
 interface LocationModalProps {
@@ -25,16 +26,18 @@ const isSameArray = (a: string[], b: string[]) =>
   a.length === b.length && a.every((value, index) => value === b[index]);
 
 export default function LocationModal({ location, onClose, onSaved }: LocationModalProps) {
-  const { npcs, addLocation, updateLocation } = useStore(
+  const { npcs, addLocation, updateLocation, getLocationImageUrl } = useStore(
     useShallow((state) => ({
       npcs: state.npcs,
       addLocation: state.addLocation,
       updateLocation: state.updateLocation,
+      getLocationImageUrl: state.getLocationImageUrl,
     }))
   );
 
   const [formData, setFormData] = useState<LocationFormState>(initialFormState);
   const [selectedNpcIds, setSelectedNpcIds] = useState<string[]>(location?.linked_npc_ids || []);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
@@ -45,6 +48,7 @@ export default function LocationModal({ location, onClose, onSaved }: LocationMo
         description: location.description || '',
         image_url: location.image_url || '',
       });
+      setSelectedFile(null);
 
       const locationNpcIds = location.linked_npc_ids || [];
       if (!isSameArray(locationNpcIds, selectedNpcIds)) {
@@ -85,8 +89,8 @@ export default function LocationModal({ location, onClose, onSaved }: LocationMo
     const payload = {
       name: formData.name.trim(),
       description: formData.description.trim() || undefined,
-      image_url: formData.image_url.trim() || undefined,
       linked_npc_ids: selectedNpcIds,
+      file: selectedFile || undefined,
     };
 
     setIsSaving(true);
@@ -161,15 +165,13 @@ export default function LocationModal({ location, onClose, onSaved }: LocationMo
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2" htmlFor="location-image">
-              Ссылка на изображение
+            <label className="block text-sm font-medium text-slate-300 mb-2" htmlFor="location-image-upload">
+              Изображение локации
             </label>
-            <input
-              id="location-image"
-              value={formData.image_url}
-              onChange={(event) => handleChange('image_url', event.target.value)}
-              className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20"
-              placeholder="https://example.com/image.jpg"
+            <MapImageUpload
+              existingImageUrl={location?.image_url ? getLocationImageUrl(location.image_url) : undefined}
+              onFileSelect={(file) => setSelectedFile(file)}
+              disabled={isSaving}
             />
           </div>
 
