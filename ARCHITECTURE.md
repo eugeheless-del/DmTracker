@@ -57,7 +57,7 @@ src/
 const [currentScreen, setCurrentScreen] = useState<Screen>('dashboard')
 
 // Тип Screen:
-type Screen = 'dashboard' | 'characters' | 'twists' | 'sessions'
+type Screen = 'dashboard' | 'characters' | 'twists' | 'sessions '|' locations '
 
 // Переключение:
 <button onClick={() => setCurrentScreen('characters')}>

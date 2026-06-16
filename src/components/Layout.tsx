@@ -1,28 +1,77 @@
 import { useState } from 'react'
+import type { Session } from '@supabase/supabase-js'
 import Dashboard from '../pages/Dashboard'
 import Characters from '../pages/Characters'
+import Locations from '../pages/Locations'
+import Maps from '../pages/Maps'
 import Twists from '../pages/Twists'
 import Sessions from '../pages/Sessions'
+import CampaignTimeline from '../pages/CampaignTimeline'
+import { SearchBar } from './SearchBar'
+import HotkeysHelp from './HotkeysHelp'
+import { useGlobalHotkeys } from '../hooks/useGlobalHotkeys'
+import { useStore } from '../store'
+import { SearchResult } from '../types'
 
-type Screen = 'dashboard' | 'characters' | 'twists' | 'sessions'
+type Screen = 'dashboard' | 'characters' | 'locations' | 'maps' | 'twists' | 'sessions' | 'timeline'
 
-function Layout() {
+type LayoutProps = {
+  session: Session
+  onSignOut: () => Promise<void>
+}
+
+function Layout({ session, onSignOut }: LayoutProps) {
   const [currentScreen, setCurrentScreen] = useState<Screen>('dashboard')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const showHotkeysHelp = useStore((state) => state.showHotkeysHelp)
+  const openHotkeysHelp = useStore((state) => state.openHotkeysHelp)
+  const closeHotkeysHelp = useStore((state) => state.closeHotkeysHelp)
+
+  useGlobalHotkeys(setCurrentScreen)
 
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-    { id: 'characters', label: 'Персонажи', icon: '🧙' },
-    { id: 'twists', label: 'Твисты', icon: '✨' },
-    { id: 'sessions', label: 'Сессии', icon: '📅' },
+    { id: 'dashboard', label: 'Общее', icon: '📊', route: '/dashboard' },
+    { id: 'timeline', label: 'Хронология', icon: '📅', route: '/timeline' },
+    { id: 'characters', label: 'Персонажи', icon: '🧙', route: '/characters' },
+    { id: 'locations', label: 'Локации', icon: '📍', route: '/locations' },
+    { id: 'maps', label: 'Карты', icon: '🗺️', route: '/maps' },
+    { id: 'twists', label: 'Твисты', icon: '✨', route: '/twists' },
+    { id: 'sessions', label: 'Сессии', icon: '📅', route: '/sessions' },
   ] as const
+
+  // Handle search result selection - navigate to appropriate page
+  const handleSearchResult = (result: SearchResult) => {
+    switch (result.type) {
+      case 'pc':
+      case 'npc':
+        setCurrentScreen('characters')
+        break
+      case 'twist':
+        setCurrentScreen('twists')
+        break
+      case 'session':
+        setCurrentScreen('sessions')
+        break
+      case 'locations':
+        setCurrentScreen('locations')
+        break
+      default:
+        break
+    }
+  }
 
   const renderScreen = () => {
     switch (currentScreen) {
       case 'dashboard':
         return <Dashboard />
+      case 'timeline':
+        return <CampaignTimeline />
       case 'characters':
         return <Characters />
+      case 'locations':
+        return <Locations />
+      case 'maps':
+        return <Maps />
       case 'twists':
         return <Twists />
       case 'sessions':
@@ -38,20 +87,32 @@ function Layout() {
       <header className="bg-slate-900 border-b border-slate-800 px-4 py-4 sticky top-0 z-40">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 flex-1">
-            <h1 className="text-2xl font-bold">🐉 DM Tracker</h1>
+            <div>
+              <h1 className="text-2xl font-bold">🐉 DM Tracker</h1>
+              <p className="text-sm text-slate-400">{session.user.email}</p>
+            </div>
           </div>
 
-          {/* Search bar (placeholder) */}
+          {/* Search bar */}
           <div className="hidden md:flex flex-1 max-w-md">
-            <div className="relative w-full">
-              <input
-                type="text"
-                placeholder="Поиск..."
-                className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm focus:outline-none focus:border-slate-600"
-                disabled
-              />
-              <span className="absolute right-3 top-2.5 text-slate-500">🔍</span>
-            </div>
+            <SearchBar onResultSelect={handleSearchResult} />
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={openHotkeysHelp}
+              className="rounded-full bg-slate-800 px-3 py-2 text-sm font-semibold text-slate-100 transition hover:bg-slate-700"
+              aria-label="Показать хоткеи"
+              type="button"
+            >
+              ⌨️
+            </button>
+            <button
+              onClick={onSignOut}
+              className="rounded-full bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-slate-700"
+            >
+              Выйти
+            </button>
           </div>
 
           {/* Mobile menu toggle */}
@@ -121,8 +182,10 @@ function Layout() {
         </main>
       </div>
 
+      <HotkeysHelp isOpen={showHotkeysHelp} onClose={closeHotkeysHelp} />
+
       {/* Mobile Bottom Tab Bar */}
-      <nav className="md:hidden bg-slate-900 border-t border-slate-800 flex">
+      <nav className="flex md:!hidden bg-slate-900 border-t border-slate-800">
         {navItems.map((item) => (
           <button
             key={item.id}

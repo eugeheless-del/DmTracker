@@ -1,13 +1,45 @@
 import { create } from 'zustand';
-import { StoreState, NPC, PC, Twist, Session } from './types';
-
-const STORAGE_KEY = 'dm_tracker_store';
-
-// Utility: generate unique ID
-const generateId = (): string => `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+import { StoreState, NPC, PC, Twist, Session, SearchResult, InventoryItem, StatusEffect, Location, LocationInput, NPCTwistConnection, NPCConnectionType, TimelineEvent, MapItem, MapPin } from './types';
+import { TwistInput } from './types';
+import { supabase } from './supabaseClient';
 
 // Utility: get current timestamp
-const now = (): number => Date.now();
+const now = (): string => new Date().toISOString();
+
+const getCurrentUser = async () => {
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error) throw error;
+  if (!user) throw new Error('User not authenticated');
+
+  return user;
+};
+
+const calculateTwistReadiness = (twist: Twist) => {
+  const conditions = twist.conditions || [];
+  return conditions.length > 0 && conditions.every((condition) => condition.isMet);
+};
+
+const ensureTwistReadyState = (twist: Twist): Twist => {
+  return {
+    ...twist,
+    isReady: calculateTwistReadiness(twist),
+  };
+};
+
+const MAP_IMAGE_BUCKET = 'map-images';
+const MAX_MAP_IMAGE_SIZE = 10 * 1024 * 1024; // 10 MB
+const ALLOWED_MAP_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+
+const normalizeMapImagePath = (path: string): string => {
+  if (!path) return '';
+  const publicUrlMatch = path.match(/\/storage\/v1\/object\/public\/map-images\/(.+)$/);
+  if (publicUrlMatch) return publicUrlMatch[1];
+  return path.replace(/^\/+/, '');
+};
 
 // Initial empty state
 const initialState = {
@@ -15,205 +47,1465 @@ const initialState = {
   pcs: [] as PC[],
   twists: [] as Twist[],
   sessions: [] as Session[],
+  events: [] as TimelineEvent[],
+  timelineEventsLoaded: false,
+  npcTwistConnections: [] as NPCTwistConnection[],
+  maps: [] as MapItem[],
+  activeMap: null as MapItem | null,
+  mapPins: [] as MapPin[],
+  isMapEditMode: false,
+  mapsLoading: false,
+  mapsError: null as Error | null,
+  locations: [] as Location[],
+  selectedLocationId: null as string | null,
+  selectedDate: new Date().toISOString().slice(0, 10),
+  calendarMonth: new Date().getMonth(),
+  calendarYear: new Date().getFullYear(),
+  eventSearchQuery: '',
+  isEventModalOpen: false,
+  editingEvent: null as TimelineEvent | null,
+  showHotkeysHelp: false,
+  showCharacterForm: false,
+  characterFormType: 'pc' as 'pc' | 'npc',
+  showTwistForm: false,
+  showSessionForm: false,
 };
 
 export const useStore = create<StoreState>((set, get) => {
-  // Middleware to persist state to localStorage
-  const persistState = (state: Partial<StoreState>) => {
-    try {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-          npcs: state.npcs,
-          pcs: state.pcs,
-          twists: state.twists,
-          sessions: state.sessions,
-        })
-      );
-    } catch (error) {
-      console.warn('Failed to save state to localStorage:', error);
-    }
-  };
-
   return {
     ...initialState,
 
-    // ===== NPC Methods =====
-    addNpc: (data) =>
-      set((state) => {
-        const newNpc: NPC = {
-          ...data,
-          id: generateId(),
-          createdAt: now(),
-          updatedAt: now(),
-        };
-        const newState = { npcs: [...state.npcs, newNpc] };
-        persistState(newState);
-        return newState;
-      }),
+    // ===== Calendar Event State =====
+    fetchEvents: async () => {
+      try {
+        const user = await getCurrentUser();
 
-    updateNpc: (id, data) =>
-      set((state) => {
-        const newNpcs = state.npcs.map((npc) =>
-          npc.id === id ? { ...npc, ...data, updatedAt: now() } : npc
-        );
-        const newState = { npcs: newNpcs };
-        persistState(newState);
-        return newState;
-      }),
+        const { data, error } = await supabase
+          .from('timeline_events')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('event_date', { ascending: false });
 
-    deleteNpc: (id) =>
-      set((state) => {
-        const newNpcs = state.npcs.filter((npc) => npc.id !== id);
-        // Remove NPC from all sessions
-        const newSessions = state.sessions.map((session) => ({
-          ...session,
-          npcIds: session.npcIds.filter((npcId) => npcId !== id),
+        if (error) throw error;
+
+        set({ events: (data || []) as TimelineEvent[], timelineEventsLoaded: true });
+      } catch (error) {
+        console.warn('Failed to fetch timeline events:', error);
+        throw error;
+      }
+    },
+
+    addEvent: async (eventData: Omit<TimelineEvent, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => {
+      try {
+        const user = await getCurrentUser();
+
+        const { data: insertedEvent, error } = await supabase
+          .from('timeline_events')
+          .insert({
+            ...eventData,
+            user_id: user.id,
+          })
+          .select('*')
+          .single();
+
+        if (error) throw error;
+        if (!insertedEvent) throw new Error('Event creation returned no record');
+
+        set((state) => ({
+          ...state,
+          events: [...state.events, insertedEvent as TimelineEvent],
         }));
-        const newState = { npcs: newNpcs, sessions: newSessions };
-        persistState(newState);
-        return newState;
+
+        return insertedEvent as TimelineEvent;
+      } catch (error) {
+        console.warn('Failed to add timeline event:', error);
+        throw error;
+      }
+    },
+
+    updateEvent: async (id: string, data: Partial<Omit<TimelineEvent, 'id' | 'created_at' | 'updated_at' | 'user_id'>>) => {
+      try {
+        const { data: updatedEvent, error } = await supabase
+          .from('timeline_events')
+          .update({ ...data, updated_at: now() })
+          .eq('id', id)
+          .select('*')
+          .single();
+
+        if (error) throw error;
+        if (!updatedEvent) throw new Error('Event update returned no record');
+
+        set((state) => ({
+          ...state,
+          events: state.events.map((event) =>
+            event.id === id ? (updatedEvent as TimelineEvent) : event
+          ),
+        }));
+      } catch (error) {
+        console.warn('Failed to update timeline event:', error);
+        throw error;
+      }
+    },
+
+    deleteEvent: async (id: string) => {
+      try {
+        const { error } = await supabase
+          .from('timeline_events')
+          .delete()
+          .eq('id', id);
+
+        if (error) throw error;
+
+        set((state) => ({
+          ...state,
+          events: state.events.filter((event) => event.id !== id),
+        }));
+      } catch (error) {
+        console.warn('Failed to delete timeline event:', error);
+        throw error;
+      }
+    },
+
+    setSelectedDate: (date: string) => set({ selectedDate: date }),
+
+    changeCalendarMonth: (offset: -1 | 1) =>
+      set((state) => {
+        let month = state.calendarMonth + offset;
+        let year = state.calendarYear;
+
+        if (month > 11) {
+          month = 0;
+          year += 1;
+        }
+
+        if (month < 0) {
+          month = 11;
+          year -= 1;
+        }
+
+        return { calendarMonth: month, calendarYear: year };
       }),
+
+    setEventSearchQuery: (query: string) => set({ eventSearchQuery: query }),
+
+    openEventModal: (event?: TimelineEvent) =>
+      set({ isEventModalOpen: true, editingEvent: event ?? null }),
+
+    closeEventModal: () =>
+      set({ isEventModalOpen: false, editingEvent: null }),
+
+    filteredEventsByDate: (): TimelineEvent[] => {
+      const { events, selectedDate, eventSearchQuery } = get();
+      const normalizedQuery = eventSearchQuery.trim().toLowerCase();
+
+      return events.filter((event) => {
+        const matchesDate = event.event_date === selectedDate;
+        if (!matchesDate) return false;
+
+        if (!normalizedQuery) return true;
+
+        const title = event.title?.toLowerCase() || '';
+        const description = event.description?.toLowerCase() || '';
+
+        const matchesSearch =
+          title.includes(normalizedQuery) || description.includes(normalizedQuery);
+
+        return matchesDate && matchesSearch;
+      });
+    },
+
+    // ===== NPC Methods =====
+    addNpc: async (data) => {
+      try {
+        const user = await getCurrentUser();
+
+        const { data: insertedNpc, error } = await supabase
+          .from('npcs')
+          .insert([{ ...data, user_id: user.id, created_at: now(), updated_at: now() }])
+          .select('*')
+          .single();
+
+        if (error) throw error;
+        if (!insertedNpc) throw new Error('NPC creation returned no record');
+
+        // Refresh data after insert
+        const { data: npcs, error: fetchError } = await supabase.from('npcs').select('*');
+        if (fetchError) throw fetchError;
+
+        set({ npcs: npcs as NPC[] });
+        return insertedNpc as NPC;
+      } catch (error) {
+        console.warn('Failed to add NPC:', error);
+        throw error;
+      }
+    },
+
+    updateNpc: async (id, data) => {
+      try {
+        const { error } = await supabase
+          .from('npcs')
+          .update({ ...data, updated_at: now() })
+          .eq('id', id);
+
+        if (error) throw error;
+
+        // Refresh data after update
+        const { data: npcs, error: fetchError } = await supabase.from('npcs').select('*');
+        if (fetchError) throw fetchError;
+
+        set({ npcs: npcs as NPC[] });
+      } catch (error) {
+        console.warn('Failed to update NPC:', error);
+        throw error;
+      }
+    },
+
+    deleteNpc: async (id) => {
+      try {
+        const { error } = await supabase
+          .from('npcs')
+          .delete()
+          .eq('id', id);
+
+        if (error) throw error;
+
+        set((state) => {
+          const newNpcs = state.npcs.filter((npc) => npc.id !== id);
+          const newSessions = state.sessions.map((session) => ({
+            ...session,
+            npc_ids: session.npc_ids.filter((npcId) => npcId !== id),
+          }));
+          return { npcs: newNpcs, sessions: newSessions };
+        });
+      } catch (error) {
+        console.warn('Failed to delete NPC:', error);
+        throw error;
+      }
+    },
 
     getNpcById: (id) => get().npcs.find((npc) => npc.id === id),
 
-    // ===== PC Methods =====
-    addPc: (data) =>
-      set((state) => {
-        const newPc: PC = {
-          ...data,
-          id: generateId(),
-          createdAt: now(),
-          updatedAt: now(),
+    addNPCTwistConnection: async (
+      npcId: string,
+      twistId: string,
+      connectionType: NPCConnectionType,
+      description?: string
+    ) => {
+      try {
+        const connectionId = crypto.randomUUID();
+        const payload = {
+          id: connectionId,
+          npc_id: npcId,
+          twist_id: twistId,
+          connection_type: connectionType,
+          description,
+          created_at: now(),
         };
-        const newState = { pcs: [...state.pcs, newPc] };
-        persistState(newState);
-        return newState;
-      }),
 
-    updatePc: (id, data) =>
-      set((state) => {
-        const newPcs = state.pcs.map((pc) =>
-          pc.id === id ? { ...pc, ...data, updatedAt: now() } : pc
-        );
-        const newState = { pcs: newPcs };
-        persistState(newState);
-        return newState;
-      }),
+        const { data, error } = await supabase
+          .from('npc_twist_connections')
+          .insert([payload])
+          .select('*')
+          .single();
 
-    deletePc: (id) =>
-      set((state) => {
-        const newPcs = state.pcs.filter((pc) => pc.id !== id);
-        // Remove PC from all sessions
-        const newSessions = state.sessions.map((session) => ({
-          ...session,
-          pcIds: session.pcIds.filter((pcId) => pcId !== id),
+        if (error) throw error;
+
+        const newConnection = data as NPCTwistConnection;
+
+        set((state) => ({
+          npcTwistConnections: [...state.npcTwistConnections, newConnection],
+          npcs: state.npcs.map((npc) =>
+            npc.id === npcId
+              ? {
+                  ...npc,
+                  twist_connections: [...(npc.twist_connections || []), newConnection],
+                }
+              : npc
+          ),
+          twists: state.twists.map((twist) =>
+            twist.id === twistId
+              ? {
+                  ...twist,
+                  connected_npcs: [...(twist.connected_npcs || []), newConnection],
+                }
+              : twist
+          ),
         }));
-        const newState = { pcs: newPcs, sessions: newSessions };
-        persistState(newState);
-        return newState;
-      }),
+
+        return newConnection;
+      } catch (error) {
+        console.warn('Failed to add NPC-Twist connection:', error);
+        throw error;
+      }
+    },
+
+    removeNPCTwistConnection: async (connectionId: string) => {
+      try {
+        const { error } = await supabase
+          .from('npc_twist_connections')
+          .delete()
+          .eq('id', connectionId);
+
+        if (error) throw error;
+
+        set((state) => ({
+          npcTwistConnections: state.npcTwistConnections.filter((connection) => connection.id !== connectionId),
+          npcs: state.npcs.map((npc) => ({
+            ...npc,
+            twist_connections: (npc.twist_connections || []).filter((connection) => connection.id !== connectionId),
+          })),
+          twists: state.twists.map((twist) => ({
+            ...twist,
+            connected_npcs: (twist.connected_npcs || []).filter((connection) => connection.id !== connectionId),
+          })),
+        }));
+      } catch (error) {
+        console.warn('Failed to remove NPC-Twist connection:', error);
+        throw error;
+      }
+    },
+
+    loadTwistConnections: async (twistId: string) => {
+      try {
+        const { data, error } = await supabase
+          .from('npc_twist_connections')
+          .select('*, npc: npcs(*)')
+          .eq('twist_id', twistId);
+
+        if (error) throw error;
+
+        return (data || []) as NPCTwistConnection[];
+      } catch (error) {
+        console.warn('Failed to load twist connections:', error);
+        throw error;
+      }
+    },
+
+    loadNPCConnections: async (npcId: string) => {
+      try {
+        const { data, error } = await supabase
+          .from('npc_twist_connections')
+          .select('*, twist: twists(*)')
+          .eq('npc_id', npcId);
+
+        if (error) throw error;
+
+        return (data || []) as NPCTwistConnection[];
+      } catch (error) {
+        console.warn('Failed to load NPC connections:', error);
+        throw error;
+      }
+    },
+
+    addNPCItem: async (npcId: string, itemName: string, description?: string) => {
+      try {
+        const payload = {
+          npc_id: npcId,
+          item_name: itemName,
+          description,
+          created_at: now(),
+        };
+
+        const { error } = await supabase
+          .from('npc_items')
+          .insert([payload])
+          .select('*')
+          .single();
+
+        if (error) {
+          const errorMessage = (error.message || '').toLowerCase();
+          if (errorMessage.includes('npc_items') && errorMessage.includes('does not exist')) {
+            set((state) => ({
+              npcs: state.npcs.map((npc) =>
+                npc.id === npcId
+                  ? {
+                      ...npc,
+                      owned_items: [...(npc.owned_items || []), itemName],
+                    }
+                  : npc
+              ),
+            }));
+            return;
+          }
+          throw error;
+        }
+
+        set((state) => ({
+          npcs: state.npcs.map((npc) =>
+            npc.id === npcId
+              ? {
+                  ...npc,
+                  owned_items: [...(npc.owned_items || []), itemName],
+                }
+              : npc
+          ),
+        }));
+      } catch (error) {
+        console.warn('Failed to add NPC item:', error);
+        throw error;
+      }
+    },
+
+    // ===== PC Methods =====
+    addPc: async (data) => {
+      try {
+        const user = await getCurrentUser();
+
+        const { error } = await supabase
+          .from('pcs')
+          .insert([{ ...data, user_id: user.id, created_at: now(), updated_at: now() }]);
+
+        if (error) throw error;
+
+        // Refresh data after insert
+        const { data: pcs, error: fetchError } = await supabase.from('pcs').select('*');
+        if (fetchError) throw fetchError;
+
+        set({ pcs: pcs as PC[] });
+      } catch (error) {
+        console.warn('Failed to add PC:', error);
+        throw error;
+      }
+    },
+
+    updatePc: async (id, data) => {
+      try {
+        const { error } = await supabase
+          .from('pcs')
+          .update({ ...data, updated_at: now() })
+          .eq('id', id);
+
+        if (error) throw error;
+
+        // Refresh data after update
+        const { data: pcs, error: fetchError } = await supabase.from('pcs').select('*');
+        if (fetchError) throw fetchError;
+
+        set({ pcs: pcs as PC[] });
+      } catch (error) {
+        console.warn('Failed to update PC:', error);
+        throw error;
+      }
+    },
+
+    deletePc: async (id) => {
+      try {
+        const { error } = await supabase
+          .from('pcs')
+          .delete()
+          .eq('id', id);
+
+        if (error) throw error;
+
+        set((state) => {
+          const newPcs = state.pcs.filter((pc) => pc.id !== id);
+          const newSessions = state.sessions.map((session) => ({
+            ...session,
+            pc_ids: session.pc_ids.filter((pcId) => pcId !== id),
+          }));
+          return { pcs: newPcs, sessions: newSessions };
+        });
+      } catch (error) {
+        console.warn('Failed to delete PC:', error);
+        throw error;
+      }
+    },
 
     getPcById: (id) => get().pcs.find((pc) => pc.id === id),
 
+    openCharacterForm: (type) => set({ showCharacterForm: true, characterFormType: type }),
+    closeCharacterForm: () => set({ showCharacterForm: false, characterFormType: 'pc' }),
+    openTwistForm: () => set({ showTwistForm: true }),
+    closeTwistForm: () => set({ showTwistForm: false }),
+    openSessionForm: () => set({ showSessionForm: true }),
+    closeSessionForm: () => set({ showSessionForm: false }),
+    openHotkeysHelp: () => set({ showHotkeysHelp: true }),
+    closeHotkeysHelp: () => set({ showHotkeysHelp: false }),
+    toggleHotkeysHelp: () => set((state) => ({ showHotkeysHelp: !state.showHotkeysHelp })),
+
+    // ===== Inventory Methods =====
+    addInventoryItem: async (pcId: string, item: Partial<InventoryItem>) => {
+      try {
+        const user = await getCurrentUser();
+
+        // Generate ID for new item
+        const itemId = crypto.randomUUID();
+        
+        const { error } = await supabase
+          .from('inventory')
+          .insert([{
+            id: itemId,
+            user_id: user.id,
+            pc_id: pcId,
+            item_name: item.item_name,
+            quantity: item.quantity || 1,
+            description: item.description,
+            created_at: now(),
+          }]);
+
+        if (error) throw error;
+
+        // Update local state: add item to PC's inventory
+        set((state) => {
+          const newPcs = state.pcs.map((pc) => {
+            if (pc.id === pcId) {
+              const newInventory = [
+                ...(pc.inventory || []),
+                {
+                  id: itemId,
+                  pc_id: pcId,
+                  item_name: item.item_name,
+                  quantity: item.quantity || 1,
+                  description: item.description,
+                  created_at: now(),
+                } as InventoryItem,
+              ];
+              return { ...pc, inventory: newInventory };
+            }
+            return pc;
+          });
+          return { pcs: newPcs };
+        });
+      } catch (error) {
+        console.warn('Failed to add inventory item:', error);
+        throw error;
+      }
+    },
+
+    deleteInventoryItem: async (itemId: string) => {
+      try {
+        const { error } = await supabase
+          .from('inventory')
+          .delete()
+          .eq('id', itemId);
+
+        if (error) throw error;
+
+        // Update local state: remove item from PC's inventory
+        set((state) => {
+          const newPcs = state.pcs.map((pc) => ({
+            ...pc,
+            inventory: (pc.inventory || []).filter((item) => item.id !== itemId),
+          }));
+          return { pcs: newPcs };
+        });
+      } catch (error) {
+        console.warn('Failed to delete inventory item:', error);
+        throw error;
+      }
+    },
+
+    loadInventoryForPc: async (pcId: string) => {
+      try {
+        const { data, error } = await supabase
+          .from('inventory')
+          .select('*')
+          .eq('pc_id', pcId);
+
+        if (error) throw error;
+
+        // Update local state: set PC's inventory
+        set((state) => {
+          const newPcs = state.pcs.map((pc) => {
+            if (pc.id === pcId) {
+              return { ...pc, inventory: (data || []) as InventoryItem[] };
+            }
+            return pc;
+          });
+          return { pcs: newPcs };
+        });
+      } catch (error) {
+        console.warn('Failed to load inventory for PC:', error);
+        throw error;
+      }
+    },
+
+    // ===== Status Effect Methods =====
+    addStatus: async (pcId: string, statusData: Partial<StatusEffect>) => {
+      try {
+        const user = await getCurrentUser();
+
+        // Generate ID for new status
+        const statusId = crypto.randomUUID();
+
+        const { error } = await supabase
+          .from('status_effects')
+          .insert([{
+            id: statusId,
+            user_id: user.id,
+            pc_id: pcId,
+            name: statusData.name || 'Новый статус',
+            description: statusData.description,
+            is_active: statusData.is_active !== undefined ? statusData.is_active : true,
+            created_at: now(),
+            updated_at: now(),
+          }]);
+
+        if (error) throw error;
+
+        // Update local state: add status to PC's statuses
+        set((state) => {
+          const newPcs = state.pcs.map((pc) => {
+            if (pc.id === pcId) {
+              const newStatuses = [
+                ...(pc.statuses || []),
+                {
+                  id: statusId,
+                  pc_id: pcId,
+                  name: statusData.name || 'Новый статус',
+                  description: statusData.description,
+                  is_active: statusData.is_active !== undefined ? statusData.is_active : true,
+                  created_at: now(),
+                  updated_at: now(),
+                } as StatusEffect,
+              ];
+              return { ...pc, statuses: newStatuses };
+            }
+            return pc;
+          });
+          return { pcs: newPcs };
+        });
+      } catch (error) {
+        console.warn('Failed to add status effect:', error);
+        throw error;
+      }
+    },
+
+    deleteStatus: async (statusId: string) => {
+      try {
+        const { error } = await supabase
+          .from('status_effects')
+          .delete()
+          .eq('id', statusId);
+
+        if (error) throw error;
+
+        // Update local state: remove status from PC's statuses
+        set((state) => {
+          const newPcs = state.pcs.map((pc) => ({
+            ...pc,
+            statuses: (pc.statuses || []).filter((status) => status.id !== statusId),
+          }));
+          return { pcs: newPcs };
+        });
+      } catch (error) {
+        console.warn('Failed to delete status effect:', error);
+        throw error;
+      }
+    },
+
     // ===== Twist Methods =====
-    addTwist: (data) =>
-      set((state) => {
-        const newTwist: Twist = {
-          ...data,
-          id: generateId(),
-          createdAt: now(),
-          updatedAt: now(),
+    addTwist: async (data: TwistInput) => {
+      try {
+        const user = await getCurrentUser();
+        const { isReady, ...payload } = data as any;
+        const twistData = {
+          title: payload.title,
+          description: payload.description,
+          trigger_condition: payload.trigger_condition,
+          status: payload.status,
+          type: payload.type,
+          consequence: payload.consequence,
+          conditions: payload.conditions ?? [],
+          campaign_id: payload.campaign_id,
+          user_id: user.id,
+          created_at: now(),
+          updated_at: now(),
         };
-        const newState = { twists: [...state.twists, newTwist] };
-        persistState(newState);
-        return newState;
-      }),
 
-    updateTwist: (id, data) =>
-      set((state) => {
-        const newTwists = state.twists.map((twist) =>
-          twist.id === id ? { ...twist, ...data, updatedAt: now() } : twist
-        );
-        const newState = { twists: newTwists };
-        persistState(newState);
-        return newState;
-      }),
+        const { error } = await supabase
+          .from('twists')
+          .insert([twistData]);
 
-    deleteTwist: (id) =>
-      set((state) => {
-        const newTwists = state.twists.filter((twist) => twist.id !== id);
-        // Remove Twist from all sessions
-        const newSessions = state.sessions.map((session) => ({
-          ...session,
-          twistIds: session.twistIds.filter((twistId) => twistId !== id),
+        if (error) throw error;
+
+        const { data: twists, error: fetchError } = await supabase.from('twists').select('*');
+        if (fetchError) throw fetchError;
+
+        set({ twists: (twists as Twist[]).map(ensureTwistReadyState) });
+      } catch (error) {
+        console.warn('Failed to add Twist:', error);
+        throw error;
+      }
+    },
+
+    updateTwist: async (id, data) => {
+      try {
+        const { isReady, ...payload } = data as any;
+        const updatePayload: any = {
+          updated_at: now(),
+        };
+
+        if (payload.title !== undefined) updatePayload.title = payload.title;
+        if (payload.description !== undefined) updatePayload.description = payload.description;
+        if (payload.trigger_condition !== undefined) updatePayload.trigger_condition = payload.trigger_condition;
+        if (payload.status !== undefined) updatePayload.status = payload.status;
+        if (payload.type !== undefined) updatePayload.type = payload.type;
+        if (payload.consequence !== undefined) updatePayload.consequence = payload.consequence;
+        if (payload.conditions !== undefined) updatePayload.conditions = payload.conditions;
+        if (payload.campaign_id !== undefined) updatePayload.campaign_id = payload.campaign_id;
+
+        const { error } = await supabase
+          .from('twists')
+          .update(updatePayload)
+          .eq('id', id);
+
+        if (error) throw error;
+
+        const { data: twists, error: fetchError } = await supabase.from('twists').select('*');
+        if (fetchError) throw fetchError;
+
+        set({ twists: (twists as Twist[]).map(ensureTwistReadyState) });
+      } catch (error) {
+        console.warn('Failed to update Twist:', error);
+        throw error;
+      }
+    },
+
+    addCondition: async (twistId, condition) => {
+      try {
+        const twist = get().getTwistById(twistId);
+        if (!twist) throw new Error('Twist not found');
+
+        const newCondition = {
+          ...condition,
+          id: crypto.randomUUID(),
+        };
+        const conditions = [...(twist.conditions || []), newCondition];
+        const isReady = calculateTwistReadiness({ ...twist, conditions });
+
+        const { error } = await supabase
+          .from('twists')
+          .update({ conditions, updated_at: now() })
+          .eq('id', twistId);
+
+        if (error) throw error;
+
+        set((state) => ({
+          twists: state.twists.map((item) =>
+            item.id === twistId ? { ...item, conditions, isReady } : item
+          ),
         }));
-        const newState = { twists: newTwists, sessions: newSessions };
-        persistState(newState);
-        return newState;
-      }),
+      } catch (error) {
+        console.warn('Failed to add twist condition:', error);
+        throw error;
+      }
+    },
+
+    toggleCondition: async (twistId, conditionId) => {
+      try {
+        const twist = get().getTwistById(twistId);
+        if (!twist) throw new Error('Twist not found');
+
+        const conditions = (twist.conditions || []).map((condition) =>
+          condition.id === conditionId ? { ...condition, isMet: !condition.isMet } : condition
+        );
+        const isReady = calculateTwistReadiness({ ...twist, conditions });
+
+        const { error } = await supabase
+          .from('twists')
+          .update({ conditions, updated_at: now() })
+          .eq('id', twistId);
+
+        if (error) throw error;
+
+        set((state) => ({
+          twists: state.twists.map((item) =>
+            item.id === twistId ? { ...item, conditions, isReady } : item
+          ),
+        }));
+      } catch (error) {
+        console.warn('Failed to toggle twist condition:', error);
+        throw error;
+      }
+    },
+
+    checkTwistStatus: async (twistId) => {
+      try {
+        const twist = get().getTwistById(twistId);
+        if (!twist) throw new Error('Twist not found');
+
+        const isReady = calculateTwistReadiness(twist);
+
+        set((state) => ({
+          twists: state.twists.map((item) =>
+            item.id === twistId ? { ...item, isReady } : item
+          ),
+        }));
+      } catch (error) {
+        console.warn('Failed to check twist status:', error);
+        throw error;
+      }
+    },
+
+    deleteTwist: async (id) => {
+      try {
+        const { error } = await supabase
+          .from('twists')
+          .delete()
+          .eq('id', id);
+
+        if (error) throw error;
+
+        set((state) => {
+          const newTwists = state.twists.filter((twist) => twist.id !== id);
+          const newSessions = state.sessions.map((session) => ({
+            ...session,
+            twist_ids: session.twist_ids.filter((twistId) => twistId !== id),
+          }));
+          return { twists: newTwists, sessions: newSessions };
+        });
+      } catch (error) {
+        console.warn('Failed to delete Twist:', error);
+        throw error;
+      }
+    },
 
     getTwistById: (id) => get().twists.find((twist) => twist.id === id),
 
     // ===== Session Methods =====
-    addSession: (data) =>
-      set((state) => {
-        const newSession: Session = {
-          ...data,
-          id: generateId(),
-          createdAt: now(),
-          updatedAt: now(),
-        };
-        const newState = { sessions: [...state.sessions, newSession] };
-        persistState(newState);
-        return newState;
-      }),
-
-    updateSession: (id, data) =>
-      set((state) => {
-        const newSessions = state.sessions.map((session) =>
-          session.id === id ? { ...session, ...data, updatedAt: now() } : session
-        );
-        const newState = { sessions: newSessions };
-        persistState(newState);
-        return newState;
-      }),
-
-    deleteSession: (id) =>
-      set((state) => {
-        const newSessions = state.sessions.filter((session) => session.id !== id);
-        const newState = { sessions: newSessions };
-        persistState(newState);
-        return newState;
-      }),
-
-    getSessionById: (id) => get().sessions.find((session) => session.id === id),
-
-    // ===== Utility Methods =====
-    loadFromStorage: () => {
+    addSession: async (data) => {
       try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-          const data = JSON.parse(stored);
-          set({
-            npcs: data.npcs || [],
-            pcs: data.pcs || [],
-            twists: data.twists || [],
-            sessions: data.sessions || [],
-          });
-        }
+        const user = await getCurrentUser();
+
+        const { error } = await supabase
+          .from('sessions')
+          .insert([{ ...data, user_id: user.id, created_at: now(), updated_at: now() }]);
+
+        if (error) throw error;
+
+        // Refresh data after insert
+        const { data: sessions, error: fetchError } = await supabase.from('sessions').select('*');
+        if (fetchError) throw fetchError;
+
+        set({ sessions: sessions as Session[] });
       } catch (error) {
-        console.warn('Failed to load state from localStorage:', error);
+        console.warn('Failed to add Session:', error);
+        throw error;
       }
     },
 
-    clearAll: () => {
-      set(initialState);
+    updateSession: async (id, data) => {
       try {
-        localStorage.removeItem(STORAGE_KEY);
+        const { error } = await supabase
+          .from('sessions')
+          .update({ ...data, updated_at: now() })
+          .eq('id', id);
+
+        if (error) throw error;
+
+        // Refresh data after update
+        const { data: sessions, error: fetchError } = await supabase.from('sessions').select('*');
+        if (fetchError) throw fetchError;
+
+        set({ sessions: sessions as Session[] });
       } catch (error) {
-        console.warn('Failed to clear localStorage:', error);
+        console.warn('Failed to update Session:', error);
+        throw error;
       }
+    },
+
+    deleteSession: async (id) => {
+      try {
+        const { error } = await supabase
+          .from('sessions')
+          .delete()
+          .eq('id', id);
+
+        if (error) throw error;
+
+        set((state) => ({
+          sessions: state.sessions.filter((session) => session.id !== id),
+        }));
+      } catch (error) {
+        console.warn('Failed to delete Session:', error);
+        throw error;
+      }
+    },
+
+    getSessionById: (id) => get().sessions.find((session) => session.id === id),
+
+    // ===== Location Methods =====
+    addLocation: async (data: LocationInput) => {
+      try {
+        const user = await getCurrentUser();
+
+        const { data: insertedLocation, error } = await supabase
+          .from('locations')
+          .insert([
+            {
+              ...data,
+              user_id: user.id,
+              linked_npc_ids: data.linked_npc_ids || [],
+              created_at: now(),
+              updated_at: now(),
+            },
+          ])
+          .select('*')
+          .single();
+
+        if (error) throw error;
+        if (!insertedLocation) throw new Error('Location creation returned no record');
+
+        set((state) => ({ locations: [insertedLocation as Location, ...state.locations] }));
+      } catch (error) {
+        console.warn('Failed to add Location:', error);
+        throw error;
+      }
+    },
+
+    updateLocation: async (id, data) => {
+      try {
+        const { data: updatedLocation, error } = await supabase
+          .from('locations')
+          .update({ ...data, updated_at: now() })
+          .eq('id', id)
+          .select('*')
+          .single();
+
+        if (error) throw error;
+        if (!updatedLocation) throw new Error('Location update returned no record');
+
+        set((state) => ({
+          locations: state.locations.map((location) =>
+            location.id === id ? (updatedLocation as Location) : location
+          ),
+        }));
+      } catch (error) {
+        console.warn('Failed to update Location:', error);
+        throw error;
+      }
+    },
+
+    deleteLocation: async (id) => {
+      try {
+        const { error } = await supabase
+          .from('locations')
+          .delete()
+          .eq('id', id);
+
+        if (error) throw error;
+
+        set((state) => ({ locations: state.locations.filter((location) => location.id !== id) }));
+      } catch (error) {
+        console.warn('Failed to delete Location:', error);
+        throw error;
+      }
+    },
+
+    toggleNpcInLocation: async (locationId, npcId) => {
+      try {
+        const location = get().locations.find((item) => item.id === locationId);
+        if (!location) throw new Error('Location not found');
+
+        const nextNpcIds = location.linked_npc_ids?.includes(npcId)
+          ? location.linked_npc_ids.filter((id) => id !== npcId)
+          : [...(location.linked_npc_ids || []), npcId];
+
+        const { data: updatedLocation, error } = await supabase
+          .from('locations')
+          .update({ linked_npc_ids: nextNpcIds, updated_at: now() })
+          .eq('id', locationId)
+          .select('*')
+          .single();
+
+        if (error) throw error;
+        if (!updatedLocation) throw new Error('Location NPC toggle returned no record');
+
+        set((state) => ({
+          locations: state.locations.map((item) =>
+            item.id === locationId ? (updatedLocation as Location) : item
+          ),
+        }));
+      } catch (error) {
+        console.warn('Failed to toggle NPC in Location:', error);
+        throw error;
+      }
+    },
+
+    fetchLocations: async () => {
+      try {
+        const user = await getCurrentUser();
+
+        const { data, error } = await supabase
+          .from('locations')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        set({ locations: (data || []) as Location[] });
+      } catch (error) {
+        console.warn('Failed to fetch Locations:', error);
+        throw error;
+      }
+    },
+
+    setSelectedLocationId: (locationId: string | null) => set({ selectedLocationId: locationId }),
+
+    fetchMaps: async () => {
+      set({ mapsLoading: true, mapsError: null });
+      try {
+        const user = await getCurrentUser();
+
+        const { data, error } = await supabase
+          .from('maps')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        set({ maps: (data || []) as MapItem[] });
+      } catch (error) {
+        console.warn('Failed to fetch Maps:', error);
+        set({ mapsError: error instanceof Error ? error : new Error('Failed to fetch maps') });
+        throw error;
+      } finally {
+        set({ mapsLoading: false });
+      }
+    },
+
+    uploadMapImage: async (userId: string, mapId: string, file: File) => {
+      try {
+        if (!file) throw new Error('No image file provided');
+        if (!ALLOWED_MAP_IMAGE_TYPES.includes(file.type)) {
+          throw new Error('Unsupported file type. Only JPEG, PNG, WEBP and GIF are allowed.');
+        }
+        if (file.size > MAX_MAP_IMAGE_SIZE) {
+          throw new Error(`Image size must be less than ${MAX_MAP_IMAGE_SIZE / 1024 / 1024}MB`);
+        }
+        
+        const folderPath = `${userId}/${mapId}`;
+        const { data: existingFiles, error: listError } = await supabase
+          .storage
+          .from(MAP_IMAGE_BUCKET)
+          .list(folderPath);
+
+        if (listError) throw listError;
+
+        if (existingFiles?.length) {
+          const oldPaths = existingFiles.map((fileEntry) => `${folderPath}/${fileEntry.name}`);
+          const { error: removeError } = await supabase
+            .storage
+            .from(MAP_IMAGE_BUCKET)
+            .remove(oldPaths);
+
+          if (removeError) throw removeError;
+        }
+
+        const filePath = `${folderPath}/${file.name}`;
+        const { error: uploadError } = await supabase
+          .storage
+          .from(MAP_IMAGE_BUCKET)
+          .upload(filePath, file, { upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        const publicUrl = get().getMapImageUrl(filePath);
+        if (!publicUrl) throw new Error('Failed to generate public URL for map image');
+
+        return publicUrl;
+      } catch (error) {
+        console.warn('Failed to upload map image:', error);
+        throw error;
+      }
+    },
+
+    deleteMapImage: async (filePath: string) => {
+      try {
+        const normalizedPath = normalizeMapImagePath(filePath);
+        if (!normalizedPath) return;
+
+        const { error } = await supabase
+          .storage
+          .from(MAP_IMAGE_BUCKET)
+          .remove([normalizedPath]);
+
+        if (error) throw error;
+      } catch (error) {
+        console.warn('Failed to delete map image:', error);
+        throw error;
+      }
+    },
+
+    getMapImageUrl: (imagePath: string) => {
+      const normalizedPath = normalizeMapImagePath(imagePath);
+      if (!normalizedPath) return '';
+      return supabase.storage.from(MAP_IMAGE_BUCKET).getPublicUrl(normalizedPath).data.publicUrl || '';
+    },
+
+    addMap: async (name: string, imageUrl: string, file?: File) => {
+      try {
+        const user = await getCurrentUser();
+        const mapId = crypto.randomUUID();
+        let imagePath = imageUrl;
+
+        if (file) {
+          imagePath = `${user.id}/${mapId}/${file.name}`;
+          await get().uploadMapImage(user.id, mapId, file);
+        }
+
+        const { data: insertedMap, error } = await supabase
+          .from('maps')
+          .insert([
+            {
+              id: mapId,
+              name,
+              image_url: imagePath,
+              user_id: user.id,
+              created_at: now(),
+            },
+          ])
+          .select('*')
+          .single();
+
+        if (error) throw error;
+        if (!insertedMap) throw new Error('Map creation returned no record');
+
+        set((state) => ({ maps: [insertedMap as MapItem, ...state.maps] }));
+        return insertedMap as MapItem;
+      } catch (error) {
+        console.warn('Failed to add Map:', error);
+        throw error;
+      }
+    },
+
+    updateMap: async (
+      id: string,
+      data: Partial<Omit<MapItem, 'id' | 'created_at'>> & { file?: File }
+    ) => {
+      try {
+        const user = await getCurrentUser();
+        const existingMap = get().maps.find((map) => map.id === id);
+        if (!existingMap) throw new Error('Map not found');
+        const updatePayload: Record<string, any> = {
+           updated_at: new Date().toISOString() // ✅ Стандартный формат даты
+    };
+        // const updatePayload: any = { updated_at: now() };
+
+        if (data.name !== undefined) updatePayload.name = data.name;
+        if (data.description !== undefined) updatePayload.description = data.description;
+
+        if (data.file) {
+          if (existingMap.image_url) {
+            await get().deleteMapImage(existingMap.image_url);
+          }
+
+          const filePath = `${user.id}/${id}/${data.file.name}`;
+          await get().uploadMapImage(user.id, id, data.file);
+          updatePayload.image_url = filePath;
+        } else if (data.image_url !== undefined) {
+          updatePayload.image_url = data.image_url;
+        }
+
+        const { data: updatedMap, error } = await supabase
+          .from('maps')
+          .update(updatePayload)
+          .eq('id', id)
+          .eq('user_id', user.id)
+          .select('*')
+          .maybeSingle();
+
+        if (error) throw error;
+        if (!updatedMap) throw new Error('Map update returned no record');
+
+        set((state) => ({
+          maps: state.maps.map((map) => (map.id === id ? (updatedMap as MapItem) : map)),
+        }));
+
+        return updatedMap as MapItem;
+      } catch (error) {
+        console.warn('Failed to update Map:', error);
+        throw error;
+      }
+    },
+
+    deleteMap: async (id: string) => {
+      try {
+        const existingMap = get().maps.find((map) => map.id === id);
+        if (existingMap?.image_url) {
+          await get().deleteMapImage(existingMap.image_url);
+        }
+
+        const { error } = await supabase
+          .from('maps')
+          .delete()
+          .eq('id', id);
+
+        if (error) throw error;
+
+        set((state) => ({ maps: state.maps.filter((map) => map.id !== id) }));
+      } catch (error) {
+        console.warn('Failed to delete Map:', error);
+        throw error;
+      }
+    },
+
+    fetchMapPins: async (mapId: string) => {
+      try {
+        const { data, error } = await supabase
+          .from('map_pins')
+          .select('*, location:locations(id, name, description, linked_npc_ids)')
+          .eq('map_id', mapId)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        set({ mapPins: (data || []) as MapPin[] });
+      } catch (error) {
+        console.warn('Failed to fetch Map Pins:', error);
+        throw error;
+      }
+    },
+
+    addPin: async (mapId: string, locationId: string, x: number, y: number) => {
+      try {
+        const { data: insertedPin, error } = await supabase
+          .from('map_pins')
+          .insert([
+            {
+              map_id: mapId,
+              location_id: locationId,
+              x_coord: x,
+              y_coord: y,
+              created_at: now(),
+            },
+          ])
+          .select('*, location:locations(name, description, image_url)')
+          .single();
+
+        if (error) throw error;
+        if (!insertedPin) throw new Error('Pin creation returned no record');
+
+        set((state) => ({ mapPins: [...state.mapPins, insertedPin as MapPin] }));
+        return insertedPin as MapPin;
+      } catch (error) {
+        console.warn('Failed to add Map Pin:', error);
+        throw error;
+      }
+    },
+
+    deletePin: async (pinId: string) => {
+      try {
+        const { error } = await supabase
+          .from('map_pins')
+          .delete()
+          .eq('id', pinId);
+
+        if (error) throw error;
+
+        set((state) => ({ mapPins: state.mapPins.filter((pin) => pin.id !== pinId) }));
+      } catch (error) {
+        console.warn('Failed to delete Map Pin:', error);
+        throw error;
+      }
+    },
+
+    setActiveMap: (map) => set({ activeMap: map, mapPins: map ? get().mapPins : [] }),
+
+    toggleMapEditMode: () => set((state) => ({ isMapEditMode: !state.isMapEditMode })),
+
+    loadLocations: async () => get().fetchLocations(),
+
+    // ===== Utility Methods =====
+    loadFromSupabase: async () => {
+      try {
+        const [pcsRes, npcsRes, twistsRes, sessionsRes, inventoryRes, statusesRes, locationsRes, connectionsRes] = await Promise.all([
+          supabase.from('pcs').select('*'),
+          supabase.from('npcs').select('*'),
+          supabase.from('twists').select('*'),
+          supabase.from('sessions').select('*'),
+          supabase.from('inventory').select('*'),
+          supabase.from('status_effects').select('*'),
+          supabase.from('locations').select('*'),
+          supabase.from('npc_twist_connections').select('*'),
+        ]);
+
+        if (pcsRes.error) throw pcsRes.error;
+        if (npcsRes.error) throw npcsRes.error;
+        if (twistsRes.error) throw twistsRes.error;
+        if (sessionsRes.error) throw sessionsRes.error;
+        if (locationsRes.error) throw locationsRes.error;
+        // Note: inventoryRes.error and statusesRes.error are optional - tables might not exist yet
+
+        // Build inventory map: pc_id -> inventory items
+        const inventoryMap = new Map<string, InventoryItem[]>();
+        if (inventoryRes.data) {
+          (inventoryRes.data as InventoryItem[]).forEach((item) => {
+            if (!inventoryMap.has(item.pc_id)) {
+              inventoryMap.set(item.pc_id, []);
+            }
+            inventoryMap.get(item.pc_id)!.push(item);
+          });
+        }
+
+        // Build status map: pc_id -> status effects
+        const statusMap = new Map<string, StatusEffect[]>();
+        if (statusesRes.data) {
+          (statusesRes.data as StatusEffect[]).forEach((status) => {
+            if (!statusMap.has(status.pc_id)) {
+              statusMap.set(status.pc_id, []);
+            }
+            statusMap.get(status.pc_id)!.push(status);
+          });
+        }
+
+        // Attach inventory and statuses to each PC
+        const pcsWithRelations = (pcsRes.data || []).map((pc: PC) => ({
+          ...pc,
+          inventory: inventoryMap.get(pc.id) || [],
+          statuses: statusMap.get(pc.id) || [],
+        }));
+
+        set({
+          pcs: pcsWithRelations as PC[],
+          npcs: (npcsRes.data || []) as NPC[],
+          twists: (twistsRes.data || [])
+            .map((twist) => ensureTwistReadyState(twist as Twist)) as Twist[],
+          sessions: (sessionsRes.data || []) as Session[],
+          locations: (locationsRes.data || []) as Location[],
+          npcTwistConnections: (connectionsRes.data || []) as NPCTwistConnection[],
+        });
+      } catch (error) {
+        console.warn('Failed to load data from Supabase:', error);
+      }
+    },
+
+    clearAll: async () => {
+      try {
+        await Promise.all([
+          supabase.from('pcs').delete().neq('id', ''),
+          supabase.from('npcs').delete().neq('id', ''),
+          supabase.from('twists').delete().neq('id', ''),
+          supabase.from('sessions').delete().neq('id', ''),
+          supabase.from('locations').delete().neq('id', ''),
+          supabase.from('npc_twist_connections').delete().neq('id', ''),
+        ]);
+
+        set(initialState);
+      } catch (error) {
+        console.warn('Failed to clear all data:', error);
+      }
+    },
+
+    // Global search across all entities
+    searchEntities: (query: string): SearchResult[] => {
+      const state = get();
+      const normalizedQuery = query.toLowerCase().trim();
+
+      if (!normalizedQuery) return [];
+
+      const results: SearchResult[] = [];
+
+      // Search PCs
+      state.pcs.forEach((pc) => {
+        if (pc.name.toLowerCase().includes(normalizedQuery)) {
+          results.push({
+            id: pc.id,
+            name: pc.name,
+            type: 'pc',
+            description: `${pc.class || 'Character'}${pc.player_name ? ` (${pc.player_name})` : ''}`,
+            matchedField: 'name',
+          });
+        } else if (
+          pc.class?.toLowerCase().includes(normalizedQuery) ||
+          pc.race?.toLowerCase().includes(normalizedQuery) ||
+          pc.player_name?.toLowerCase().includes(normalizedQuery)
+        ) {
+          results.push({
+            id: pc.id,
+            name: pc.name,
+            type: 'pc',
+            description: `${pc.class || 'Character'}${pc.player_name ? ` (${pc.player_name})` : ''}`,
+            matchedField: 'role',
+          });
+        }
+      });
+
+      // Search NPCs
+      state.npcs.forEach((npc) => {
+        if (npc.name.toLowerCase().includes(normalizedQuery)) {
+          results.push({
+            id: npc.id,
+            name: npc.name,
+            type: 'npc',
+            description: npc.role || npc.location || 'NPC',
+            matchedField: 'name',
+          });
+        } else if (
+          npc.role?.toLowerCase().includes(normalizedQuery) ||
+          npc.location?.toLowerCase().includes(normalizedQuery) ||
+          npc.appearance?.toLowerCase().includes(normalizedQuery)
+        ) {
+          results.push({
+            id: npc.id,
+            name: npc.name,
+            type: 'npc',
+            description: npc.role || npc.location || 'NPC',
+            matchedField: 'role',
+          });
+        }
+      });
+
+      // Search Twists
+      state.twists.forEach((twist) => {
+        if (twist.title.toLowerCase().includes(normalizedQuery)) {
+          results.push({
+            id: twist.id,
+            name: twist.title,
+            type: 'twist',
+            description: twist.type || twist.description,
+            matchedField: 'name',
+          });
+        } else if (
+          twist.type?.toLowerCase().includes(normalizedQuery) ||
+          twist.description?.toLowerCase().includes(normalizedQuery)
+        ) {
+          results.push({
+            id: twist.id,
+            name: twist.title,
+            type: 'twist',
+            description: twist.type || twist.description,
+            matchedField: 'type',
+          });
+        }
+      });
+
+      // Search Sessions
+      state.sessions.forEach((session) => {
+        if (
+          session.name.toLowerCase().includes(normalizedQuery) ||
+          session.description?.toLowerCase().includes(normalizedQuery)
+        ) {
+          results.push({
+            id: session.id,
+            name: session.name,
+            type: 'session',
+            description: session.description || 'Session',
+            matchedField: 'name',
+          });
+        }
+      });
+
+      // Search Locations
+      state.locations.forEach((location) => {
+        if (
+          location.name.toLowerCase().includes(normalizedQuery) ||
+          location.description?.toLowerCase().includes(normalizedQuery)
+        ) {
+          results.push({
+            id: location.id,
+            name: location.name,
+            type: 'locations',
+            description: location.description || 'Location',
+            matchedField: 'name',
+          });
+        }
+      });
+
+      return results;
     },
   };
 });
